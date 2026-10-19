@@ -232,6 +232,11 @@
     padding:clamp(4px,calc(.6 * var(--vh)),8px) 0 clamp(8px,calc(1.55 * var(--vh)),20px)}
   .hero .herosign img{display:block;height:clamp(34px,calc(3.4 * var(--vw)),54px);width:auto}
   .hero .herosign span{font-size:clamp(20px,calc(1.6 * var(--vw)),26px);font-weight:700;letter-spacing:-.02em;color:var(--ink);white-space:nowrap}
+  /* 웹 게시 주소 QR(2026-10-19 사용자 지시) — 서명 줄 오른쪽 아래. QR 은 scripts/build_web_qr.py 가 굽는다 */
+  .cover1 .hero .herosign{padding-right:clamp(150px,calc(12 * var(--vw)),210px)}   /* QR 칸만큼 서명 줄을 왼쪽으로 비켜 세운다 */
+  .hero .webqr{position:absolute;right:0;bottom:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;z-index:2}
+  .hero .webqr img{display:block;width:clamp(84px,calc(7 * var(--vw)),118px);height:auto}
+  .hero .webqr span{font-size:clamp(11px,calc(.85 * var(--vw)),14px);line-height:1.3;font-weight:600;color:var(--mut);text-align:right;letter-spacing:-.01em}
   .hero .heroglobe{position:absolute;left:0;top:0;width:calc(100% * var(--K));height:calc(100% * var(--K));
     transform:scale(calc(1 / var(--K)));transform-origin:0 0}
 
@@ -1943,6 +1948,7 @@
         </div>
         <div class="herosign"><img src="image/logo-kunhwa-header-retina-en-2.png"
           alt="kunhwa Engineering &amp; Consulting"><span><b class="kh">(주)건화 환경평가부</b> 정필수 상무</span></div>
+        <div class="webqr"><img src="image/web_qr.svg" alt="웹 게시본 QR — https://jeong-peelsoo.github.io/eia-ai-deck/"><span>jeong-peelsoo.github.io/<br>eia-ai-deck</span></div>
         <!-- ⚠ 지구 아래 두 줄(`1 km × 8,760 시간` · 부제)을 걷었다(2026-08-16 지시).
              그 자리가 그대로 지구의 높이가 된다 — `.heroglobe` 가 `flex:1` 이라 남는 세로를 다 먹는다.
              다시 넣으려면 지구가 그만큼 작아진다는 것을 알고 넣을 것(1600 에서 약 88px). -->
