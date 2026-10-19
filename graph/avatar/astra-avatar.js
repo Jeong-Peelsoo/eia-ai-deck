@@ -31,7 +31,7 @@
       const ld = (src) => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = src; });
       this.ready = Promise.all([
         ...Object.keys(M.bodies).map(n => ld(base + 'body/' + n + '.webp').then(im => this.body[n] = im)),
-        ...M.heads.map(n => ld(base + 'head/' + n + '.webp').then(im => this.head[n] = im)),
+        ...M.heads.map(n => ld(base + 'head/' + ((M.files && M.files[n]) || n) + '.webp').then(im => this.head[n] = im)),
         ld(base + 'head-mask.webp').then(im => this.mask = im)]).then(() => this.draw());
     }
     now(){ return (performance.now() - this.t0) / 1000; }
