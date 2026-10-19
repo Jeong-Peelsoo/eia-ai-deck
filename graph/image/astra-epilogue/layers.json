@@ -1,0 +1,66 @@
+{
+ "source": "Live2D/source/incoming-motion-v1 (rig.js · assets.bundle.js) — scripts/build_epilogue_robot.py",
+ "canvas": 1024,
+ "base": "graph/image/로봇2_변형3_설명.png",
+ "face": {
+  "half": [
+   561,
+   235,
+   123,
+   47
+  ],
+  "closed": [
+   561,
+   235,
+   123,
+   47
+  ],
+  "smile": [
+   570,
+   323,
+   101,
+   71
+  ]
+ },
+ "eyes": [
+  {
+   "x": 561.0,
+   "y": 249.0,
+   "w": 42.0,
+   "h": 35.0,
+   "cx": 579.0,
+   "cy": 268.0,
+   "rx": 19.0,
+   "ry": 14.0,
+   "dx": 2.7,
+   "dy": 1.8
+  },
+  {
+   "x": 627.0,
+   "y": 230.0,
+   "w": 63.0,
+   "h": 48.0,
+   "cx": 654.0,
+   "cy": 254.0,
+   "rx": 30.0,
+   "ry": 20.0,
+   "dx": 4.2,
+   "dy": 2.7
+  }
+ ],
+ "mouth": {
+  "cx": 620.0,
+  "cy": 358.0,
+  "rx": 51.0,
+  "ry": 36.0
+ },
+ "arm": {
+  "cutX": 448.0,
+  "pivot": [
+   400.0,
+   909.0
+  ],
+  "maxRotation": 0.8
+ },
+ "blinkSeconds": 0.24
+}

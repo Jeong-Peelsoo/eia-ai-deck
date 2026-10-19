@@ -1,0 +1,2901 @@
+<!DOCTYPE html>
+<!-- 낮 배경 SDGs 녹색 지구본 모듈 — 덱에 얹는 자립 모듈(정본은 docs/ppt/earth-module/, 덱은 사본을 받는다).
+     레퍼런스 ../ppt-제55회한일기술사회발표/image/sdgs_asia_globe.jpg 의 구도(동아시아를 정면에 둔 녹색 지구 + 지구를 감는
+     SDG 색 궤도 띠 + 도시를 잇는 광점 네트워크)를 낮 지면 위에서 다시 그린다.
+     밤 지구 모듈(../ppt-미특대성과발표회/module/globe-satellites.html)
+     은 01편 영상을 iframe 으로 얹는 방식이지만, 낮·녹색·SDGs 조합은 원본 영상에 없어 자체 렌더러로 새로 짰다.
+
+     기술 구성 (외부 라이브러리·CDN 없음 — 벤더 폰트만 다른 폴더를 참조하고 나머지 자산은 이 덱 안에 둔다)
+       · 지구본 — NASA GIBS Blue Marble 실사 텍스처(earth_day.js, 녹색 보정본)를 캔버스에서
+         화소 단위 정사영 역투영 + 이중선형 샘플링으로 구면에 입힌다. 램버트 주광 음영과 림 대기산란을 함께 계산한다.
+         2026-10-08 — 전지구~동아시아 배율은 WebGL2 가 같은 역투영을 화면 해상도 그대로 밉맵 샘플링해 그린다(§3 EGL).
+         그 배율의 음영은 '전지구 모습'(채도 · 주광 · 바다 반사 · 녹청 림)이다 — 한일 덱 20장 맺음 지구본과 같은 식.
+       · 그래프망 — GraphCast 멀티메쉬(정이십면체 0→3 세분, 642 노드·1,920 간선)를 지구에 씌운다.
+         특정 도시를 특별히 잇지 않는다. 지구 어디서나 같은 규칙·같은 밀도로 이어진 균질한 망이다.
+       · 정보 흐름 — ① 임의의 노드에서 시작한 섬광이 그래프를 타고 번진다(동시 2파면). **전지구 화면에
+         들어설 때 두 번만 번지고 멎는다** — 계속 번지면 관객의 눈이 농도장이 아니라 섬광에 붙는다.
+         전지구 버튼을 다시 누르거나 사례를 갈면 다시 두 번 번진다. ② 34개의 빛 입자는 계속 간선을 건너뛰며 돈다.
+       · 농도장(광역) — 지표 NO₂·PM₂.₅·O₃ 실제 농도장(aq_field.js, CAMS EAC4 재분석 + GEOS-CF nesting,
+         2023-03-11~13 KST)을 구면에 입힌다. 파면이 지나간 자리에서 농도장이 드러나고(메시지 패싱이
+         농도를 옮긴다는 서술), 그 뒤로는 자료의 시간 변화 자체가 수송·확산·소멸로 재생된다.
+         자료가 덮는 동아시아(100–149.5°E, 20–50°N) 밖은 칠하지 않는다 — 전지구를 채우면
+         없는 관측을 그린 그림이 된다. 세 물질은 15초씩 교대하고 캔버스 범례가 물질·단위·눈금·시각을 진다.
+       · 농도장(1km) — 같은 시각의 AMR-HGN(test70 4-도메인) 1km 추론(kr_field.js). 한반도 배율로
+         들어가면 광역 층이 물러나고 이것이 대신 올라온다. 부호화·컬러바를 광역과 공유하므로
+         확대해도 색의 의미가 바뀌지 않는다. 두 층을 나란히 두지 않는 이유는 §농도장 주석 참조.
+       · 측정망 — AirKorea 관측 지점(kr_stations.js, 640개소)을 같은 램프로 칠한 점. 지역 배율에서 켠다.
+       · 사례 — 서로 다른 이야기를 하는 자료 묶음이다. 겨울·봄·오존은 72시간 창(수송·일주 변화)이고,
+         **연간(2023 KST 364일 일평균)** 은 반대로 시간 해상도를 하루로 내주고 계절 변화를 말한다.
+         세 층이 사례마다 한 벌씩이고 같은 t0·같은 간격을 공유하므로 사례를 갈면 시계가 함께 간다.
+       · 확대 — 전지구 → 동아시아 → 한반도 → 지역 4단. 버튼·휠·드래그가 한 카메라 상태를 움직이고,
+         층의 등장·퇴장은 시간이 아니라 배율의 함수다(weights). 배경은 배율에 따라 정밀 타일(basemap.js,
+         ASTER GDEM + Blue Marble 합성)로 갈아입고, 한반도 배율부터는 탈색해 밝은 흑백 힐쉐이드가 된다 —
+         컬러 지면 위에서는 반투명 농도장이 읽히지 않기 때문이다. 해안선·경계는 boundaries.js.
+         **권역 배율(z 60~160)에서 한 단 더 간다** — 그 권역의 상세지도(detail_*.js, terrain-light
+         1200 px/°)가 서서히 배어 나와 도로망·물길·시가지가 드러난다. 그 몫만큼 탈색을 걷으므로
+         한강 청색과 도로 회색이 남는다(§3 `dw`). 자산은 그 권역에 들어설 때만 읽는다(ensureDetail).
+         **배경은 화면에서 고른다**(MAPSTYLES, '배경' 줄 · `?map=`) — 지형(위 그대로의 흑백 힐쉐이드,
+         기본) · 토지피복(MODIS IGBP 500 m) · 위성(VWorld). 뒤의 둘은 컬러 배경지도(stylemap_*.js)를
+         얹는데, 명도는 그대로 종이톤으로 눕히고 색차만 일부 되돌려(§3 `cw`) 도시·산림이 갈린다.
+         한 번에 한 종류만 읽는다.
+         **서울 배율(z 220~2,500)은 한 단 더** — 서울 상세지도(detail_seoul.js, 같은 terrain-light 를 원천 해상도
+         15 m/px 로 구운 것)가 배경 종류와 무관하게 배어 나온다(`city` 계층, 2026-09-08). 상한 2,500 은 그 타일이
+         1.5~2배 늘어나는 배율이다 — terrain-light 는 그 아래 해상도가 없다(build_detailmap.py 머리말 실측).
+         농도장·범례는 최대 배율까지 같은 선명도로 유지한다. 위성·3D 모형은 쓰지 않는다.
+       · 위성 — GEMS(정지궤도)는 지구 고정계에 놓아 동경 128.2° 상공에 붙박여 함께 돌고 한반도를 응시한다.
+         TROPOMI/Sentinel-5P(극궤도)는 시선 좌표계에 놓아 궤도면이 관성계에 고정된다 — 지구가 그 아래로 자전해 지나간다.
+     디자인 규율은 덱(정필수-한일기술사회-발표.html)을 그대로 따른다 — 색은 인용한 5개 목표와 농도 램프에만 쓰고
+     구조는 무채색이다. 자전 방향은 실제 지구와 같다(서 → 동, 지형이 왼쪽에서 나타나 오른쪽으로 흐른다).
+
+     조작·매개변수
+       ?panel=1  덱 슬라이드에 iframe 으로 얹을 때. 지면·범례·조작 패널을 걷고 지구본만 투명 배경으로 남긴다.
+       cue { ovl: 'o3hot' | null }  정적 1km 덧층(여름 O₃ 초과 일수 · 핫스팟 깜빡임 · 지명, o3_hot_2023.js)을 켜고 끈다. 켜지면 농도장 · 범례가 물러난다.
+       ?ramp=no2hi  NO₂ 고농도 구간(25–80 ppb)의 색 차이를 넓힌다(겨울 도심처럼 대부분 25 ppb 를 넘는 날).
+       ?cx=0.3  (패널 모드) 구 · 확대 중심의 가로 자리를 폭 비율로 정한다 — 화면 전체 배경으로 깔고 왼쪽에 둘 때(2026-10-17). 기본 0.5.
+       ?graph=0  그래프망·섬광·빛 입자를 끈다.  ?sat=0  위성 2기를 끈다.  ?sdg=1  SDG 5 상징 궤도를 켠다.
+       ?assets=min  청한 사례 하나만·정밀 배경 없이 읽는다(표지 장식용 — 확대·사례 전환을 하지 않을 때).
+       ?view=globe|ea|kr|sudo|gangwon|chung|honam|yeong|jeju|seoul  확대 단계·지역을 미리 정한다(패널 모드용).
+       ?stations=1  측정망 표시를 켠 상태로 시작한다.  ?arch=e2e|2stage  한반도 1km 층의 아키텍처.
+       ?case=winter|spring|ozone  사례(72시간 창). 겨울 고농도 정체 · 봄 수송(기본) · 오존 고농도.
+       ?case=year  연간 일평균(2023 KST 364일). 세 층 모두 하루 평균이라 범례가 시각 대신 날짜를 적는다.
+       ?lon=127.5&lat=30  전지구 단계의 시선 중심.  ?spin=1  좌우 진자 대신 연속 자전.  ?spd=  자전 각속도(°/s).
+       ?labels=always  위성 이름표를 항상 켠다(마우스가 없는 캡처·PPTX 빌드용).  =off  항상 끈다.
+       ?sp=pm25|no2|o3  농도장을 한 물질로 고정(기본 cycle — PM₂.₅ → NO₂ → O₃ 교대).  ?field=0  농도장을 끈다.
+       ?tspd=  자료 시각 진행 속도(시간/초, 기본 3 — 65시간을 약 22초에 재생).
+       ?yspd=  연간 사례의 전체 재생 길이(초, 기본 42 — 1년을 42초에. 시간/초로는 잡을 수 없다).
+       ?pspd=  재생 속도 배수(기본 1 — 위 두 기준값에 곱한다). 조작 패널의 '속도' 슬라이더와 같은 값이다.
+       조작 패널의 '시각' 줄 — 정지/재생 버튼과 시각 바. 바는 누르면 멎고, 끌면 그 시각으로 가고, 떼면 그
+         자리에서 다시 흐른다. 정지는 자료 시계만 세운다(자전·섬광은 계속 돈다) — 세워 둔 채 바로 프레임을
+         골라 갈 수 있다. 발표 중 한 시각을 놓고 설명할 때 쓴다(정지 캡처는 ?t0= 를 쓴다).
+       ?reveal=0  파면을 기다리지 않고 첫 프레임부터 농도장을 다 칠한다.  ?cbar=0  농도 범례를 숨긴다.
+       ?t0=  애니메이션 시계의 시작 시점(초). 정지 캡처에서 담을 순간을 고른다 — ?t0=24&reveal=0 처럼 쓴다.
+       마우스 — 휠로 확대·축소(커서 아래 지점을 붙든다), 끌어서 이동, 두 번 누르면 전지구로 되돌린다.
+       부모창에서 postMessage({on:false}) 를 받으면 정지한다(장을 벗어난 슬라이드에서 CPU 를 놓는다).
+     첫 프레임부터 완성된 그림이다 — headless Chrome --print-to-pdf 로 PPTX 를 빌드해도 형태가 온전하다.
+     무거운 자산(1km 농도장 7 MB · 정밀 배경 2 MB)은 그 배율에 들어설 때 비로소 읽는다(지연 로딩). -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDGs 녹색 지구 · 그래프 네트워크 — 제55회 한일기술사회</title>
+<link href="vendor/fonts.css" rel="stylesheet">
+<style>
+  :root{
+    /* 덱 토큰 — 지면·잉크·SDG 17 색 */
+    --paper:#ffffff; --soft:#eef4f8;
+    --ink:#11151a; --mut:#4b555e; --dim:#6f7a84;
+    --g17:#19486A;                          /* SDG 17 색 — 강조 활자·버튼에 쓴다.
+       g3·g9·g11·g13 은 하단 SDG 칩을 자료 계층 범례로 바꾸며 쓰임이 없어져 걷었다(농도 램프는 자체 색값). */
+    --rule:rgba(17,21,26,.13);
+    --f:'Inter','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0; word-break:keep-all; overflow-wrap:break-word}   /* 한글 어절 보존 — 덱과 같은 규칙 */
+  html,body{height:100%;overflow:hidden}
+  body{font-family:var(--f);color:var(--ink);-webkit-font-smoothing:antialiased;
+    /* 낮의 하늘 — 흰 지면에서 위로 갈수록 옅은 청록이 도는 정도로만 띄운다 */
+    background:
+      radial-gradient(120% 90% at 78% 6%, rgba(255,242,206,.75) 0%, rgba(255,242,206,0) 58%),
+      linear-gradient(180deg, #f8fbfd 0%, var(--soft) 62%, #e6eef3 100%);}
+  body.panel{background:transparent}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  /* ── 지면 위 글자층 — 캔버스 밖에 두어 활자를 또렷하게 유지한다 ── */
+  .chrome{position:absolute;inset:0;pointer-events:none}
+  body.panel .chrome{display:none}
+
+  .kicker{position:absolute;left:clamp(28px,3.4vw,64px);top:clamp(24px,3.6vh,52px);
+    display:flex;align-items:center;gap:12px;
+    font-size:clamp(13px,.94vw,17px);font-weight:700;letter-spacing:.2em;color:var(--g17)}
+  .kicker i{width:34px;height:3px;background:currentColor;display:block}
+  .kicker em{font-style:normal;color:var(--dim);letter-spacing:.12em;font-weight:500}
+
+  /* 글 블록은 지구 중심(0.455H)에 맞춰 세로 가운데를 잡는다 — 좌측 상단이 비지 않게 */
+  .lede{position:absolute;left:clamp(28px,3.4vw,64px);top:34vh;max-width:min(34ch,42vw)}
+  .lede h1{font-size:clamp(24px,2.35vw,40px);font-weight:700;line-height:1.22;letter-spacing:-.02em}
+  .lede h1 em{font-style:normal;color:var(--g17)}
+  .lede p{margin-top:14px;font-size:clamp(14px,1.06vw,19px);line-height:1.62;color:var(--mut);font-weight:400;
+    word-break:keep-all}
+
+  /* 자료 계층 범례 — 화면에 지금 무엇이 그려져 있는지를 읽는 열쇠다.
+     세 층은 공간 해상도가 4천 배 차이 나므로(0.5° → 1 km → 지점) 견본도 그 성격을 따라 만든다:
+     광역은 번진 사각, 1km 는 또렷한 사각, 관측은 먹테 두른 점. 지금 활성인 층만 진하게 남는다. */
+  .legend{position:absolute;left:clamp(28px,3.4vw,64px);right:clamp(28px,3.4vw,64px);
+    bottom:clamp(30px,4.2vh,54px);display:flex;flex-wrap:wrap;gap:clamp(14px,1.5vw,28px);
+    align-items:center;border-top:2px solid var(--rule);padding-top:clamp(12px,1.6vh,20px)}
+  .legend .lay{display:flex;align-items:center;gap:clamp(7px,.6vw,10px);
+    font-size:clamp(12px,.92vw,17px);font-weight:600;color:var(--ink);
+    opacity:.34;transition:opacity .35s}
+  .legend .lay.on{opacity:1}
+  .legend .lay em{font-style:normal;font-weight:400;color:var(--dim);
+    font-size:clamp(10.5px,.78vw,14px);letter-spacing:.01em}
+  .legend .sw{flex:none;width:clamp(20px,1.6vw,28px);height:clamp(13px,1.02vw,18px);border-radius:3px}
+  .legend .sw-wide{background:linear-gradient(105deg,#FFE7A8,#FD9D24 55%,#E4590C);
+    filter:blur(1.4px);opacity:.85}                    /* 0.5° — 번져 보이는 광역 재분석 */
+  .legend .sw-km1{background:linear-gradient(105deg,#FFD267,#FD9D24 45%,#8E1F10);
+    box-shadow:inset 0 0 0 1px rgba(17,21,26,.22)}     /* 1 km — 경계가 또렷하다 */
+  .legend .sw-sta{width:clamp(13px,1.02vw,18px);border-radius:50%;background:#FD9D24;
+    box-shadow:0 0 0 1.5px rgba(17,21,26,.62)}         /* 지점 — 먹테 두른 점 */
+  /* 측정망 종류 열쇠 — 색은 농도가 이미 쓰므로 종류는 모양이 진다. 측정망 층이 켜졌을 때만 나온다.
+     견본은 캔버스와 같은 도형이되 넓이 보정은 transform 으로 흉내 낸다(clip-path 는 테두리를 지운다). */
+  .legend .stakey{display:none;align-items:center;gap:clamp(9px,.8vw,15px);
+    font-size:clamp(10.5px,.78vw,14px);color:var(--dim);letter-spacing:.01em}
+  .legend .stakey.on{display:flex}
+  /* 폭이 모자라면 flex 는 글자를 줄여 앞 항목 위에 겹쳐 놓는다 — 줄이지 말고 다음 줄로 넘긴다.
+     제 줄을 강제하면(flex-basis:100%) 범례가 한 줄 높아져 조작 패널의 '시각' 줄을 밀어 올린다. */
+  .legend .stakey, .legend .stakey b{flex:none;white-space:nowrap}
+  .legend .stakey b{display:flex;align-items:center;gap:clamp(4px,.36vw,7px);font-weight:400}
+  .legend .stakey i{flex:none;width:clamp(9px,.72vw,13px);height:clamp(9px,.72vw,13px);
+    background:#FD9D24;box-shadow:0 0 0 1px rgba(17,21,26,.55)}
+  .legend .stakey i.s0{border-radius:50%}                                        /* 도시대기 */
+  .legend .stakey i.s2, .legend .stakey i.s3, .legend .stakey i.s4{box-shadow:none}
+  .legend .stakey i.s2{clip-path:polygon(50% 0,100% 100%,0 100%);transform:scale(1.16)}
+  .legend .stakey i.s3{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);transform:scale(1.12)}
+  .legend .stakey i.s4{clip-path:polygon(0 0,100% 0,50% 100%);transform:scale(1.16)}
+  .legend .tail{margin-left:auto;font-size:clamp(11px,.84vw,15px);color:var(--dim);letter-spacing:.02em}
+  /* 확대하면 지도가 지면을 덮어 하단 글자가 지도 위에 앉는다. 예전에는 흰 그러데이션 받침을 깔았는데
+     한반도 배율에서 그 띠가 남해안·제주를 뿌옇게 가렸다 — 받침을 걷고 **글자에 흰 후광**을 준다.
+     지도 위 이름표의 표준 처리이고, 가리는 화소가 글자 윤곽뿐이라 지도를 덮지 않는다. */
+  body.zoomed .legend{padding-bottom:clamp(8px,1.2vh,14px);border-top-color:rgba(17,21,26,.28)}
+  body.zoomed .legend .lay, body.zoomed .legend .tail{
+    text-shadow:0 0 2px #fff, 0 0 4px rgba(255,255,255,.95), 0 0 9px rgba(255,255,255,.75)}
+  /* 옅은 보조 글자(#6f7a84)는 짙은 농도장 위에서 후광만으로는 버티지 못한다 — 확대에서만 한 단 어둡게 */
+  body.zoomed .legend .lay em, body.zoomed .legend .tail{color:var(--mut)}
+  body.zoomed .ctl button{background:rgba(255,255,255,.92)}
+  body.zoomed .ctl button[aria-pressed="true"]{background:var(--g17);color:#fff}
+  /* 지도 거리 축척 — 정사영 중심부의 지상 해상도를 현재 배율에 맞춰 km/m 단위로 표시한다. */
+  .scalebar{position:absolute;right:clamp(28px,3.4vw,64px);bottom:clamp(112px,15vh,164px);z-index:2;
+    display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px 10px 8px;
+    color:var(--ink);background:rgba(255,255,255,.82);border:1px solid rgba(17,21,26,.16);border-radius:7px;
+    box-shadow:0 1px 5px rgba(17,21,26,.08);pointer-events:none;opacity:0;transform:translateY(4px);
+    transition:opacity .2s,transform .2s}
+  .scalebar.on{opacity:1;transform:none}
+  .scalebar .scale-label{font-size:clamp(10.5px,.8vw,14px);font-weight:700;line-height:1;letter-spacing:.02em;
+    text-shadow:0 0 4px rgba(255,255,255,.95)}
+  .scalebar .scale-rule{position:relative;height:8px;border-left:2px solid currentColor;
+    border-right:2px solid currentColor;border-bottom:2px solid currentColor}
+  .scalebar .scale-rule::after{content:"";position:absolute;left:50%;bottom:-2px;height:5px;border-left:2px solid currentColor}
+  body.panel .scalebar{bottom:clamp(24px,3.4vh,42px)}
+  /* 좁은 화면에서만 출처 줄을 접는다. screen 한정이 없으면 인쇄 레이아웃에서도 참이 되어
+     PPTX 산출물에 출처가 사라진다(개정 전부터 그랬다 — 문구를 8자로 줄여도 사라졌다). */
+  @media screen and (max-width:900px){ .legend .tail{display:none} }
+
+  /* ── 조작 패널 — 단계·물질·측정망. .chrome 안에 두지 않는다(포인터를 받아야 한다) ── */
+  .ctl{position:absolute;left:clamp(28px,3.4vw,64px);bottom:clamp(124px,17.5vh,200px);
+    display:flex;flex-direction:column;gap:clamp(7px,.9vh,11px);align-items:flex-start;z-index:3}
+  body.panel .ctl{display:none}                          /* 패널 모드는 ?view= · ?sp= 로 미리 정한다 */
+  .ctl .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .ctl .lab{font-size:clamp(10px,.72vw,13px);font-weight:700;letter-spacing:.14em;color:var(--dim);
+    margin-right:4px;min-width:4.2em}
+  .ctl button{font-family:inherit;font-size:clamp(11px,.86vw,15px);font-weight:600;color:var(--mut);
+    background:rgba(255,255,255,.82);border:1.5px solid var(--rule);border-radius:999px;
+    padding:clamp(4px,.55vh,7px) clamp(9px,.85vw,15px);cursor:pointer;
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);transition:background .16s,color .16s,border-color .16s}
+  .ctl button:hover{background:#fff;color:var(--ink)}
+  .ctl button[aria-pressed="true"]{background:var(--g17);border-color:var(--g17);color:#fff}
+  .ctl .row.sub{padding-left:calc(4.2em + 4px)}          /* 지역 줄은 한 단 들여 쓴다 */
+  .ctl .row[hidden]{display:none}
+  /* 재생 속도 — 버튼과 같은 알약 바탕에 얹은 슬라이더. accent-color 로 트랙·손잡이를 덱 강조색에 맞춘다. */
+  .ctl input[type=range]{-webkit-appearance:none;appearance:none;accent-color:var(--g17);
+    width:clamp(96px,9vw,164px);height:clamp(20px,2.2vh,26px);margin:0;cursor:pointer;
+    background:rgba(255,255,255,.82);border:1.5px solid var(--rule);border-radius:999px;
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);padding:0 8px;box-sizing:border-box}
+  .ctl input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:var(--rule)}
+  .ctl input[type=range]::-moz-range-track{height:3px;border-radius:2px;background:var(--rule)}
+  .ctl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:13px;height:13px;border-radius:50%;background:var(--g17);border:none;margin-top:-5px}
+  .ctl input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;
+    background:var(--g17);border:none}
+  .ctl output{font-size:clamp(10.5px,.8vw,14px);font-weight:700;color:var(--mut);
+    min-width:3.4em;font-variant-numeric:tabular-nums}
+  .ctl output#tskv{min-width:9.8em;color:var(--g17)}   /* 자료 시각 — 범례와 같은 문구라 자리를 넉넉히 준다 */
+
+  /* 단독 인쇄 — 덱과 같은 16:9 지면. 덱 안에 iframe 으로 얹은 경우에는 덱의 @page 가 지면을 정한다. */
+  @media print{
+    @page{size:1600px 900px;margin:0}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div class="scalebar" id="scalebar" aria-hidden="true">
+  <span class="scale-label" id="scaleLabel"></span>
+  <span class="scale-rule" id="scaleRule"></span>
+</div>
+
+<div class="chrome">
+  <p class="kicker"><i></i>LEAVE NO ONE BEHIND <em>· 누구도 소외되지 않는다</em></p>
+  <div class="lede">
+    <h1>관측 공백을 <em>그래프로 잇는다</em></h1>
+    <p>측정소가 선 자리에서 시작한 신호가 격자를 타고 미측정 공간으로 번진다.
+      환경정보 접근성의 격차를 좁히는 일이 곧 지속가능발전목표와 만나는 지점이다.</p>
+  </div>
+  <div class="legend">
+    <span class="lay" id="layWide"><i class="sw sw-wide"></i>광역 재분석 0.5° <em>CAMS EAC4 · GEOS-CF</em></span>
+    <span class="lay" id="layKm1"><i class="sw sw-km1"></i>AMR-HGN 1 km <em>test70 4-도메인</em></span>
+    <span class="lay" id="laySta"><i class="sw sw-sta"></i>측정망 관측 <em>AirKorea 지점</em></span>
+    <span class="stakey" id="staKey"></span>
+    <span class="tail"><span id="tailField">농도장 — CAMS EAC4 재분석 + GEOS-CF</span> &nbsp;|&nbsp;
+      배경 — NASA GIBS Blue Marble · ASTER GDEM(NASA/METI) · Terrain Light(© OpenStreetMap contributors, 렌더 © EOX) ·
+      위성영상 국토교통부 공간정보 오픈플랫폼(VWorld) · 토지피복 NASA MODIS MCD12Q1 &nbsp;|&nbsp; 경계 — 시도·시군구 2023(저장소) · Natural Earth</span>
+  </div>
+</div>
+
+<!-- 조작 패널 — 확대 단계·지역·물질·측정망. 캔버스 밖에 두어 활자가 또렷하고 접근성(버튼)도 살린다. -->
+<div class="ctl" id="ctl">
+  <div class="row" id="rowCase"><span class="lab">사례</span></div>
+  <div class="row"><span class="lab">확대</span>
+    <button data-stage="globe">전지구</button>
+    <button data-stage="ea">동아시아</button>
+    <button data-stage="kr">한반도</button>
+    <button data-stage="seoul">서울</button>
+  </div>
+  <div class="row sub" id="rowRegion" hidden></div>
+  <!-- 배경지도 — 한반도 이상 배율에서만 뜻이 있다. 농도장이 주인공이라 어느 것을 골라도 채도를 낮춰 얹는다. -->
+  <div class="row" id="rowMap" hidden><span class="lab">배경</span></div>
+  <div class="row"><span class="lab">물질</span>
+    <button data-sp="cycle">순환</button>
+    <button data-sp="pm25">PM₂.₅</button>
+    <button data-sp="no2">NO₂</button>
+    <button data-sp="o3">O₃</button>
+  </div>
+  <div class="row" id="rowArch" hidden><span class="lab">추론</span></div>
+  <div class="row" id="rowSta" hidden><span class="lab">측정망</span>
+    <button id="btnSta">관측 지점 표시</button>
+  </div>
+  <!-- 재생 속도 — 자료 시각이 흐르는 빠르기. 창 사례는 시간/초, 연간 사례는 1년 재생 길이를 함께 배로 민다. -->
+  <div class="row" id="rowSpeed"><span class="lab">속도</span>
+    <input id="spd" type="range" min="0" max="6" step="1" value="3" aria-label="재생 속도">
+    <output id="spdv" for="spd">1.0×</output>
+  </div>
+  <!-- 자료 시각 — 재생을 세우고(정지) 위치를 직접 잡는다. 눈금은 0~1000 의 무단위 위상이라(사례마다
+       프레임 수가 달라도 같은 바를 쓴다) 사례를 갈아도 손잡이 범위를 다시 잡을 필요가 없다.
+       버튼 글자는 '누르면 무엇이 되는가'(정지 ↔ 재생)를 적고, 멈춘 상태는 알약이 채워져 드러난다. -->
+  <div class="row" id="rowTime"><span class="lab">시각</span>
+    <button id="btnPlay">정지</button>
+    <input id="tsk" type="range" min="0" max="1000" step="1" value="0" aria-label="자료 시각">
+    <output id="tskv" for="tsk">—</output>
+  </div>
+</div>
+
+<!-- 무거운 1km 자산(각 6~9 MB)은 여기서 읽지 않는다 — 그 배율·그 사례에 들어설 때 스크립트를 주입한다.
+     사례별 광역 농도장·측정망은 가벼워(합 2.6 MB) 미리 읽어 두고 사례 전환을 즉시 처리한다.
+
+     ⚠ `?field=0` (농도장을 끈 표지·장식 용도) 면 **농도장·측정망·정밀 배경 자산 8.0 MB 를 아예
+       읽지 않는다**. 덱 ①장이 이 모듈을 표지 장식으로 무는데, 첫 장에서 8 MB 를 읽을 이유가 없다.
+       기본(농도장 켜짐)일 때 읽는 목록과 순서는 예전 그대로다 — ④장 도입 영상은 영향이 없다.
+     ⚠ document.write 를 쓰는 이유 — 파싱 중 그 자리에 삽입되므로 **동기 로딩과 순서가 보존된다**.
+       모듈 본체가 이 전역들을 최상위에서 읽으므로 순서가 깨지면 안 된다.
+     ⚠ 빠진 자산은 모듈이 이미 견딘다 — 사례 목록을 `byName()` 으로 걸러 실제 있는 것만 남기고
+       (§사례 주석), BASEMAP·BOUNDARIES 는 `typeof` 로 감싸 놓았다. -->
+<script>
+(function(){
+  var q = new URLSearchParams(location.search);
+  // 사례별 광역 농도장 + 측정망 한 벌
+  var CASE = {
+    winter: ['aq_field_winter.js', 'kr_stations_winter.js'],
+    spring: ['aq_field.js', 'kr_stations.js'],
+    ozone:  ['aq_field_ozone.js', 'kr_stations_ozone.js'],
+    year:   ['aq_field_daily2023.js', 'kr_stations_daily2023.js'],
+  };
+  var need = ['earth_day.js'];                     // 지구본 텍스처 — 언제나 필요하다
+  if (q.get('field') !== '0'){
+    // ?assets=min — **청한 사례 하나만, 정밀 배경 없이**. 확대도 사례 전환도 하지 않는
+    // 표지 장식용이다(덱 ①장). 기본은 예전 그대로 전 사례 + 정밀 배경을 읽는다.
+    var min = q.get('assets') === 'min';
+    if (!min) need.push('basemap.js');             // 정밀 배경(확대 단계)
+    var c = q.get('case') || 'spring';
+    var keys = (min && CASE[c]) ? [c] : Object.keys(CASE);
+    for (var j = 0; j < keys.length; j++) need = need.concat(CASE[keys[j]]);
+  }
+  need.push('boundaries.js');                      // 해안선 — 전지구 단계에서도 쓴다
+  for (var i = 0; i < need.length; i++)
+    document.write('<scr' + 'ipt src="' + need[i] + '"></scr' + 'ipt>');
+})();
+</script>
+<script>
+(() => {
+'use strict';
+// ═══════════════════════════════════════════════════════════════════════════
+//  0. 매개변수 · 상수
+// ═══════════════════════════════════════════════════════════════════════════
+const Q = new URLSearchParams(location.search);
+const PANEL = Q.get('panel') === '1';
+const CXF   = PANEL ? +(Q.get('cx') ?? 0) : 0;    // ?cx=0.3 — 패널 모드에서 구 · 확대 중심의 가로 자리(폭 비율). 없으면 가운데(0.5)
+const DPR_MAX = Math.max(1, +(Q.get('dpr') ?? 2) || 2);   // ?dpr=1 — 캔버스 화소 배율 상한. 고배율 노트북에서 화면 전체를 2배로 그려 버벅이는 장에서 낮춘다(2026-10-18)
+const LON0  = +(Q.get('lon') ?? 127.5);          // 시선 중심 경도 — 한반도
+const TILT  = +(Q.get('lat') ?? 30);             // 시선 중심 위도 — 한·일이 구의 위쪽 절반 가운데 온다
+// 기본은 동아시아를 벗어나지 않는 좌우 진자다(±15°, 주기 39초). 연속 자전(5.4°/s, 한 바퀴 67초)은
+// 물리적으로 옳고 두 궤도의 차이를 보여 주지만, 농도장 자료 영역이 주기의 1/3 만 화면에 남는다.
+// 이 모듈의 주제가 농도장이 된 뒤로는 진자가 기본이고 ?spin=1 이 연속 자전이다.
+const SPIN  = Q.get('spin') === '1';
+const SPIN_DEG = +(Q.get('spd') ?? 5.4);         // 자전 각속도(°/s) — 한 바퀴 약 67초
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// 농도장 — 물질 표시 방식 · 자료 시각 진행 속도(시간/초) · 파면 노출 · 범례
+let spMode = Q.get('sp') || 'cycle';             // 'cycle'(기본) | 'pm25' | 'no2' | 'o3' — 버튼으로 바뀐다
+const FIELD_ON = Q.get('field') !== '0';
+// ── 층을 낱개로 끄고 켠다 (2026-08-16 추가 — 덱 ①장 표지 장식용) ─────────────────
+// 기본값은 **모두 예전 그대로**다. ①장만 `graph=0&sat=0&sdg=1` 로 다른 그림을 청한다.
+const GRAPH_ON = Q.get('graph') !== '0';         // 그래프망 · 정보 섬광 · 빛 입자
+const SAT_ON   = Q.get('sat')   !== '0';         // 위성 2기(GEMS · TROPOMI)
+const SDG_ON   = Q.get('sdg')   === '1';         // SDG 5 상징이 도는 궤도 띠 (기본 끔)
+const REVEAL_ON = Q.get('reveal') !== '0';
+const CBAR_ON  = Q.get('cbar') !== '0';
+const HR_PER_S = +(Q.get('tspd') ?? 3);          // 3 시간/초 — 65시간 재생에 약 22초
+// 연간 사례는 '시간/초' 로 잡을 수 없다 — 364일을 3시간/초로 흘리면 48분이다. 전체 재생 길이로 잡는다.
+const YEAR_SECS = +(Q.get('yspd') ?? 42);        // 42초에 1년(약 8.5일/초)
+// 재생 속도 배수 — 위 두 기준값에 곱한다(슬라이더가 바꾼다). 1.0 이면 기존과 글자 단위로 같은 재생이다.
+const SPEEDS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3];
+let SPEED = +(Q.get('pspd') ?? 1) || 1;
+// 시각 바를 손으로 붙들고 있는 동안은 자료 시계를 멈춘다 — 흐르는 시계와 손잡이가 다투면 원하는
+// 시각에 세울 수 없다. 손을 떼면 그 자리에서 다시 흐른다(위상 기준점 이동은 속도 변경과 같은 규약).
+let SCRUB = false;
+// 재생 정지 — 자료 시계만 세운다(지구 자전·섬광·물질 교대는 계속 돈다. 멈추는 것은 '언제' 뿐이다).
+// 붙들기와 같은 배속 0 기제를 쓰므로 세워 둔 자리에서 시각 바를 끌면 그대로 프레임을 골라 갈 수 있다.
+let PAUSED = false;
+// 애니메이션 시계의 시작 오프셋(초). 정지 화면 캡처·PPTX 빌드에서 담고 싶은 시점을 고른다 —
+// headless Chrome 은 --virtual-time-budget 으로도 requestAnimationFrame 시계를 밀지 않으므로
+// 첫 프레임이 곧 산출물이다. ?t0=24&reveal=0 이면 사례 중반의 완성된 농도장이 박힌다.
+const TOFF = +(Q.get('t0') ?? 0);
+// 확대 단계 — ?view=globe(기본)|ea(동아시아)|kr(한반도)|<지역키>. 패널 모드에서 버튼 없이 지정할 때 쓴다.
+const VIEW0 = Q.get('view') || 'globe';
+const STA_ON0 = Q.get('stations') === '1';       // 측정망 표시 초기값(지역 단계에서 의미가 있다)
+// 단계 preset 배율에 얹는 곱의 초기값. 휠이 얹는 그 값이라 단계 버튼을 누르면 1 로 돌아간다.
+// 정지 화면 캡처용이다 — headless 에서 배율을 postMessage 로 주면 --virtual-time-budget 아래서
+// 큐가 리스너 등록 전에 날아가 조용히 버려진다(check_detailmap.py 주석 참조). 질의문자열은
+// 모듈이 스스로 읽으므로 그 경주가 없다.
+const ZMUL0 = +(Q.get('zmul') ?? 1) || 1;
+const ARCH0 = Q.get('arch') || 'e2e';            // 한반도 1km 층의 아키텍처 — 'e2e' | '2stage'
+const CASE0 = Q.get('case') || 'spring';         // 사례 — 'winter'|'spring'|'ozone'(72h 창) | 'year'(연간 일평균)
+if (PANEL) document.body.classList.add('panel');
+
+const D = Math.PI / 180, TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+
+const KOREA = [126.98, 37.57];                   // 한반도 — GEMS 가 바라보는 곳
+const GEMS_LON = 128.2;                          // GEMS 정지궤도 위치(동경 128.2°, 적도)
+// 위성 — 고도는 실제 비율(GEMS 6.6 R⊕ · Sentinel-5P 1.13 R⊕)이 아니라 화면에서 읽히는 값으로 압축했다.
+//   lift — GEMS 전용 세로 보정(R 배수). 정지궤도는 적도 상공이라 위도 30°에서 내려다보는 이 시선에서는
+//   화면 아래로 0.5·rMul 만큼 내려앉는다(실제 고도로 그리면 3.3 R 아래, 화면 밖이다). 한반도 옆에서 읽히도록 끌어올린다.
+const SAT = {
+  gems: { rMul: 1.34, lift: 0.42, w: 0.34, tint: '#0E7FB8', label: 'GEMS',    orbit: '정지궤도' },
+  trop: { rMul: 1.16, lift: 0,    w: 0.26, tint: '#1B8E6A', label: 'TROPOMI', orbit: '극궤도 · Sentinel-5P' },
+};
+// 극궤도면 — 시선 좌표계에 고정한다. 지구가 그 아래에서 자전하므로 관성계에 붙박인 궤도가 된다.
+//   gam 화면상 기울기(거의 세운다) · del 개방각 · sp 각속도(rad/s)
+// sp — 극궤도 각속도(rad/s). 0.42 는 한 바퀴 15초라 눈이 위성만 쫓았다(2026-08-16 지적).
+//   0.12 = 한 바퀴 약 52초. 지구 자전(5.4°/s → 67초)과 같은 눈높이라 두 움직임이 함께 읽힌다.
+const POLAR = { gam: 1.42, del: 0.62, sp: 0.12 };
+// 카메라 거리(R 배수) — 위성 크기에만 쓰는 약한 원근이다. 지구본 자체는 정사영이라 크기가 변하지 않는다.
+//   배율 = CAM_D / (CAM_D − 깊이). 값이 작을수록 원근이 세진다.
+//   4.0 에서 앞으로 나왔을 때 GEMS 약 1.4배 · TROPOMI 약 1.2배, 림에 걸리면 1.0 배다.
+const CAM_D = 4.0;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  1. 구면 기하 — 정사영 정·역변환 (외부 라이브러리 없이 직접 푼다)
+//     시선(視) 좌표계는 X=관측자 방향(깊이) · Y=화면 오른쪽 · Z=화면 위.
+// ═══════════════════════════════════════════════════════════════════════════
+const ll2v = (lon, lat) => { const a = lon * D, b = lat * D, c = Math.cos(b);
+  return [c * Math.cos(a), c * Math.sin(a), Math.sin(b)]; };
+
+const view = { lon: LON0, ct: 1, st: 0, ca: 1, sa: 0 };
+function setView(lon, tiltDeg){
+  view.lon = lon; view.ct = Math.cos(tiltDeg * D); view.st = Math.sin(tiltDeg * D);
+  view.ca = Math.cos(-lon * D); view.sa = Math.sin(-lon * D);   // 프레임당 1회만 삼각함수를 푼다
+}
+setView(LON0, TILT);
+
+// 지구 고정 좌표 v(단위벡터) → 시선 좌표 [깊이, 우, 상]
+function toView(v, out){
+  const ca = view.ca, sa = view.sa;
+  const x = v[0] * ca - v[1] * sa, y = v[0] * sa + v[1] * ca, z = v[2];
+  out[0] = x * view.ct + z * view.st;    // 깊이 — 0 보다 크면 앞면
+  out[1] = y;
+  out[2] = z * view.ct - x * view.st;
+  return out;
+}
+const _p = [0, 0, 0];                                  // 즉시 소비하는 변환 결과용 스크래치
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  1.5 카메라 · 확대 단계
+//      상태는 하나다 — 시선 경위도(CAM.lon/lat)와 배율(CAM.z). 단계 버튼·휠·드래그가 같은 상태를 움직인다.
+//      층의 등장·퇴장은 '시간'이 아니라 '배율'의 함수다(weights). 버튼으로 뛰어들든 휠로 천천히 들어오든
+//      같은 배율에서 같은 그림이 나온다 — 두 경로의 연출을 따로 만들면 반드시 어긋난다.
+//      배율 1 = 지구본 전체가 화면에 들어오는 기존 상태다.
+// ═══════════════════════════════════════════════════════════════════════════
+const STAGE_DEF = {
+  globe: { label: '전지구',   lon: LON0,  lat: TILT, span: null },
+  ea:    { label: '동아시아', lon: 124.8, lat: 35.2, span: [49.5, 30.0] },   // 농도장 자료 영역 그대로
+  kr:    { label: '한반도',   lon: 127.7, lat: 36.3, span: [7.0, 6.2] },     // 제주~강원까지
+  seoul: { label: '서울',     lon: 126.985, lat: 37.565, span: [0.42, 0.28] },  // 서울 전역 — 도시 상세지도가 배어 나오는 배율(z≈520)
+};
+// 지역 확대 — 한반도 단계에서 한 단 더 들어간다. 측정망을 켜고 보는 단위다.
+const REGIONS = [
+  { key: 'sudo',    label: '수도권', lon: 127.00, lat: 37.45, span: [2.3, 2.0] },
+  { key: 'gangwon', label: '강원',   lon: 128.35, lat: 37.75, span: [2.6, 2.0] },
+  { key: 'chung',   label: '충청',   lon: 127.20, lat: 36.55, span: [2.5, 2.0] },
+  { key: 'honam',   label: '호남',   lon: 126.95, lat: 35.30, span: [2.5, 2.2] },
+  { key: 'yeong',   label: '영남',   lon: 128.70, lat: 35.80, span: [2.7, 2.3] },
+  { key: 'jeju',    label: '제주',   lon: 126.55, lat: 33.40, span: [1.3, 1.0] },
+];
+const REGION_BY = Object.fromEntries(REGIONS.map(r => [r.key, r]));
+
+// 배경지도 종류 — 한반도 이상 배율에서 갈아 끼운다(build_stylemap.py 가 굽는다).
+// `sat` 은 **탈색 뒤 남길 색차의 몫**이다(§3 의 cw). 배경은 여전히 종이톤으로 눕히되 그 몫만큼
+// 색을 되돌려 산림 녹색·시가지 회색·물 청색이 남는다. 0 이면 예전과 화소 단위로 같은 흑백이다.
+// 값은 자산마다 원색의 세기가 달라 따로 잡았다. **채도를 올려도 명도는 변하지 않으므로**(색차만
+// 되돌리는 식이다) 농도장이 얹힐 자리는 그대로다 — 실측에서 sat 0.42→1.0 사이 육지 휘도가 224 로
+// 고정이었다. 그래서 '농도장을 해치지 않는 한도'가 아니라 '배경이 시끄러워지지 않는 한도'로 잡았다.
+//   · land 0.14 — MODIS 는 원색(적·황·녹)이라 훨씬 눌러야 한다. 분류색은 명도까지 달라 0.10 에서도
+//                 도시–산림 색거리가 105 다. 낮춰도 읽히는 것을 잃지 않는다.
+//   · sat  0.46 — 위성은 이미 자연색이라 이 값에서 권역 색거리 71 이다. 더 올리면 초록이 짙어져
+//                 '채도 낮은 위성' 이라는 요청에서 멀어진다.
+//
+// ⚠ **지형은 컬러 배경지도가 아니다.** 2026-08-30 한 번 EOX terrain 컬러로 바꿨다가 사용자가
+//   "당초 흑백 힐쉐이드가 더 좋다"고 하여 되돌렸다(`legacy`). 그래서 지형은 전용 타일을 얹지 않고
+//   예전 경로를 그대로 쓴다 — ASTER 힐쉐이드를 완전히 탈색한 흑백 지면 + 권역 배율의 terrain-light
+//   상세지도(detail_*.js). sat 0 이라 색차를 하나도 되돌리지 않으므로 화소 단위로 예전과 같다.
+//   컬러가 필요해지면 `legacy` 를 빼고 `sat: 0.80`(실측값) 으로 두되, 자산을 먼저 구워야 한다 —
+//   `build_stylemap.py --style terrain` (쓰지 않게 되어 지웠다. 기본 대상에서도 빠져 있다).
+const MAPSTYLES = [
+  { key: 'terrain', label: '지형',     sat: 0,    legacy: true },
+  { key: 'land',    label: '토지피복', sat: 0.14 },
+  { key: 'sat',     label: '위성',     sat: 0.46 },
+];
+const MAPSTYLE_BY = Object.fromEntries(MAPSTYLES.map(m => [m.key, m]));
+let mapStyle = MAPSTYLE_BY[Q.get('map')] ? Q.get('map') : 'terrain';
+
+// 배율 상한 — 260 이던 것을 서울 상세지도(city 계층)로 2,500 까지 열었다(2026-09-08). 1600×900 에서 약 8 m/px,
+// 서울 타일(15 m/px)을 1.9배 늘리는 자리다. 더 열어도 원천에 세부가 없다 — 12,000 까지 열었다가 되돌렸다.
+const MAX_Z = 2500;
+let LEG_A = 1;                                          // 농도 범례 알파 — 농도장과 같은 가중치를 쓴다(weights.field)
+const CAM = { lon: LON0, lat: TILT, z: 1 };            // 현재(보간된) 카메라
+const TGT = { lon: LON0, lat: TILT, z: 1 };            // 목표
+const usr = { dLon: 0, dLat: 0, zMul: ZMUL0 };         // 드래그·휠이 얹는 사용자 오프셋
+let stage = STAGE_DEF[VIEW0] ? VIEW0 : (REGION_BY[VIEW0] ? 'kr' : 'globe');
+let region = REGION_BY[VIEW0] || null;
+let spinAcc = 0;                                       // 전지구 자전 누적각(°)
+let staOn = STA_ON0;                                   // 측정망 표시
+let seekPend = null;                                   // 연출 큐가 세울 자료 시각(0~1) — 다음 프레임에 반영
+
+const ss = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+
+// 경·위도 폭을 화면에 담는 배율. 정사영에서 가로 폭은 cos(중심위도) 만큼 줄어들므로 둘 중 작은 쪽을 쓴다.
+function zoomFor(span, lat){
+  const fill = PANEL ? 0.96 : 0.88;
+  return Math.min((H * fill) / (span[1] * D) / Rb, (W * fill) / (span[0] * Math.cos(lat * D) * D) / Rb);
+}
+function preset(){
+  const s = region || STAGE_DEF[stage];
+  return { lon: s.lon, lat: s.lat, z: s.span ? zoomFor(s.span, s.lat) : 1 };
+}
+function goStage(name, regKey){
+  stage = name; region = regKey ? REGION_BY[regKey] : null;
+  usr.dLon = 0; usr.dLat = 0; usr.zMul = 1;
+  if (name === 'globe') armWaves();      // 전지구로 되돌아올 때만 파면을 두 번 더 번지게 한다
+  if (typeof syncUI === 'function') syncUI();
+}
+
+// 카메라 접근 빠르기(1/s) — cue { camRate } 로 바꾼다. 기본 4 는 한반도까지 2초 남짓, 9 면 1초 남짓에 멎는다(2026-10-18, EIA 덱 46장)
+let CAM_RATE = 4.0;
+// 고정 신호 — cue 에 seq 를 실어 보내면, 카메라 · 밀기 · 덧층이 멎고 읽는 자산이 없으며 프레임이 10장 연속 매끄러울 때
+//   보낸 쪽에 { settled: seq } 를 돌려준다. 덱이 이것을 받은 뒤에 내레이션을 시작한다(확대와 말이 겹쳐 버벅였다, 같은 날 사용자 지적)
+let SETTLE = null, INFLIGHT = 0;
+function checkSettle(dt){
+  const zErr = Math.abs(Math.log(TGT.z / CAM.z)) * Math.max(W, H) / 2;   // 화면 가장자리가 배율 차로 움직이는 화소
+  const pErr = stage === 'globe' ? 0 : Math.max(Math.abs(((TGT.lon - CAM.lon + 540) % 360) - 180) * Math.cos(CAM.lat * D), Math.abs(TGT.lat - CAM.lat)) * D * R;
+  const still = zErr < 0.5 && pErr < 0.5 && !panAnim && Math.abs(OVL - OVL_T) < 0.01 && INFLIGHT === 0;
+  SETTLE.calm = still && dt <= 0.034 ? SETTLE.calm + 1 : 0;   // 전지구는 자전하므로 배율만 본다
+  if (SETTLE.calm >= 10){ try { SETTLE.src.postMessage({ settled: SETTLE.seq }, '*'); } catch (e) {} SETTLE = null; }
+}
+function updateCamera(t, dt){
+  const p = preset();
+  if (stage === 'globe' && CAM.z < 1.3 && !REDUCED){
+    // 자전 — 지구는 서에서 동으로 돈다. 관측자 정면 경도는 그래서 시간이 갈수록 줄고,
+    // 지형은 왼쪽(서)에서 나타나 오른쪽(동)으로 흐른다. 개정 전에는 부호가 반대였다.
+    spinAcc = SPIN ? spinAcc - SPIN_DEG * dt : 15 * Math.sin(t * 0.16);
+  }
+  if (stage === 'globe'){
+    p.lon += spinAcc;
+    p.lat += REDUCED ? 0 : 1.6 * Math.sin(t * 0.11);
+  }
+  TGT.lon = p.lon + usr.dLon;
+  TGT.lat = clamp(p.lat + usr.dLat, -84, 84);
+  TGT.z   = clamp(p.z * usr.zMul, 0.7, MAX_Z);
+  const k = REDUCED ? 1 : 1 - Math.exp(-dt * CAM_RATE);   // 지수 접근 — 배율은 로그축에서 섞는다
+  CAM.lon += ((TGT.lon - CAM.lon + 540) % 360 - 180) * k;
+  CAM.lat += (TGT.lat - CAM.lat) * k;
+  CAM.z *= Math.pow(TGT.z / CAM.z, k);
+  // 구 반지름·중심 — 확대할수록 시선 중심이 화면 가운데로 옮겨 간다(좌측 글자리를 비울 이유가 없어진다)
+  R = Rb * CAM.z;
+  const c = ss(1.15, 2.2, CAM.z);
+  cx = lerp(cxB, CXF > 0 ? cxB : W * 0.5, c); cy = lerp(cyB, H * 0.5, c);   // ?cx= 를 주면 확대해도 그 자리에 머문다
+  setView(CAM.lon, CAM.lat);
+}
+
+// 배율에 따른 층 가중 — 한 곳에서 정한다.
+function weights(){
+  const z = CAM.z;
+  return {
+    mesh: 1 - ss(1.5, 3.0, z),        // 전지구 그래프망 — 동아시아로 들어가며 사라진다
+    sat:  1 - ss(1.12, 1.6, z),       // 위성 2기 — 구가 커지면 궤도가 화면을 벗어나므로 먼저 물러난다
+    halo: 1 - ss(1.15, 2.0, z),
+    rim:  1 - ss(1.15, 2.0, z),
+    text: 1 - ss(1.25, 2.2, z),       // 좌측 글 블록
+    mark: 1 - ss(2.6, 7.0, z),        // 한반도 표식 — 지도가 한반도를 보여 주면 필요 없다
+    km1:  ss(11, 19, z),              // 1km 추론 농도장이 광역 농도장을 대신하는 정도
+    // 배경 탈색 — 한반도 배율에서 밝은 흑백 힐쉐이드가 된다.
+    // ⚠ 2026-08-15 무릎을 7~15 → 16~25 로 늦췄다(사용자 지시). **위성 컬러 배경을 더 오래 보여 주고,
+    //   흑백 힐쉐이드는 '한반도' 버튼이 잡는 배율(z≈23.6 독립 / 25.0 패널)에 닿을 무렵 들어온다.**
+    //   구 값은 동아시아를 벗어나자마자(z 7) 색이 빠져 전환 구간이 이미 흑백이었다.
+    //   ⚠ 경계선 색도 이 값으로 흰선↔먹선을 섞는다(BND.draw) — 무릎을 옮기면 그쪽 kz 도 함께 옮긴다.
+    desat: ss(16, 25, z),
+    sta:  staOn ? ss(9, 16, z) * (1 - ss(2000, 5000, z)) : 0,   // 측정망 점 — 거리 배율에서는 물러난다
+    // 도시 배율(서울 z 220~, 도시 상세지도 city 계층)에서도 농도장과 범례를 최대 배율까지 유지한다.
+    // 1 km 셀이 커져도 확대 전후의 색과 불투명도가 달라지지 않아야 같은 농도장으로 읽힌다.
+    field: 1,
+    bnd:   1 - ss(1500, 4000, z),
+  };
+}
+
+// ── 해상도 대비 연출(2026-10-02, 3장 도입 영상 — "해상도는 수십 킬로미터 … 같은 값 하나로 덮입니다") ──────
+//  종전에는 광역 0.5° 층을 이중선형으로 칠해 매끈한 그라데이션으로 보였고, 1km 층은 배율(z 11~19)을 따라
+//  화면 전체에서 한꺼번에 섞여 들어왔다. 그래서 '칸 하나가 한 값' 도, '그 칸을 1km 가 갈라 낸다' 도 눈에 보이지 않았다.
+//   blocks  (큐 { blocks: 0|1 }) — 광역 층을 **칸 그대로**(칸 색 하나 + 얇은 칸 경계선) 그린다. 0.6초에 녹는다.
+//           켜는 순간부터 1km 층을 붙든다(KM_HOLD) — 배율이 11 을 넘어도 와이프 전에는 섞이지 않는다.
+//   km1Wipe (큐 { km1Wipe: { lon, lat, r, sec } }) — 1km 층을 한 점에서 원형으로 번지게 드러낸다. 앞머리에 빛 테가 돈다.
+//           끝나면 KM_FORCE 로 1km 를 그대로 둔다 — 배율 가중이 1 에 닿을 때(z 19)까지 다시 광역으로 돌아가지 않게.
+//  단계 전환 큐({ stage })가 셋을 모두 되돌린다(영상 처음부터 · 대목 이동이 씬 0 의 stage 로 시작한다).
+let BLK = 0, BLK_T = 0, KM_HOLD = false, KM_FORCE = false, WIPE = null;
+//   km1Grid (큐 { km1Grid: 0|1 }, 2026-10-06) — 1km 층 위에 0.01° 칸 경계선을 긋는다. 광역 칸(blocks)과 같은 문법으로
+//           '이제 칸이 1km 다' 를 보인다. 선 굵기·알파는 화면에서 칸 크기(px)의 함수라 확대될수록 자연스럽게 또렷해진다
+//           (칸 3.5 px 아래에서는 긋지 않고 3.5~9 px 에서 녹아 든다). 0.35초 시상수로 켜고 끈다.
+let KG = 0, KG_T = 0;
+//  배경 탈색(desat)을 시간으로 거른다(2026-10-02, 3장 영상 개선 3번) — 탈색은 배율의 함수(z 16~25)라 영상의
+//  빠른 확대(z 17.6 → 155 를 6초)에서는 1초 남짓에 컬러 위성 지형이 흑백 힐쉐이드로 툭 바뀌었다. 0.8초 시상수로
+//  따라가게 해 약 2.5초에 걸쳐 녹이고, 1km 와이프가 도는 동안은 컬러를 붙든다 — 한 순간에 두 가지가 바뀌지 않게.
+let DESAT_S = -1;
+function kmMask(lon, lat){                              // 와이프 안쪽 1 · 바깥 0 (경계 페더)
+  if (!WIPE) return 1;
+  const dx = (lon - WIPE.lon) * WIPE.cl, dy = lat - WIPE.lat, d = Math.sqrt(dx * dx + dy * dy);
+  const m = clamp((WIPE.r - d) / WIPE.f + 0.5, 0, 1);
+  return m * m * (3 - 2 * m);
+}
+function stepResFx(dt, w){
+  BLK += (BLK_T - BLK) * (REDUCED ? 1 : 1 - Math.exp(-dt / 0.25));
+  if (BLK < 0.002) BLK = 0;
+  KG += (KG_T - KG) * (REDUCED ? 1 : 1 - Math.exp(-dt / 0.35));
+  if (KG < 0.002) KG = 0;
+  if (WIPE){
+    const now = PAUSED && panHold ? panHold : performance.now() / 1000;
+    const u = clamp((now - WIPE.t0) / WIPE.dur, 0, 1);
+    WIPE.u = u; WIPE.r = (WIPE.rMax + WIPE.f) * u * u * (3 - 2 * u);
+    if (u >= 1){ WIPE = null; KM_HOLD = false; KM_FORCE = true; BLK_T = 0; }
+  }
+  const dT = WIPE ? 0 : w.desat;
+  DESAT_S = DESAT_S < 0 || REDUCED ? dT : DESAT_S + (dT - DESAT_S) * (1 - Math.exp(-dt / 0.8));
+  w.desat = DESAT_S;
+  if (WIPE) w.km1 = 1;                                  // 공간 마스크가 비중을 진다
+  else if (KM_HOLD) w.km1 = 0;
+  else if (KM_FORCE){ if (w.km1 > 0.995) KM_FORCE = false; else w.km1 = 1; }
+}
+
+// 와이프 앞머리 — 1km 가 번져 나가는 경계에 빛 테를 두른다(넓은 청백 번짐 + 흰 심). 끝으로 갈수록 옅어진다.
+function drawWipeFront(){
+  const N = 96, v = [0, 0, 0], p = new Path2D(); let on = false;
+  for (let k = 0; k <= N; k++){
+    const th = k / N * TAU, lon = WIPE.lon + WIPE.r * Math.cos(th) / WIPE.cl, lat = WIPE.lat + WIPE.r * Math.sin(th);
+    toView(ll2v(lon, lat), v);
+    if (v[0] <= 0){ on = false; continue; }
+    const x = cx + R * v[1], y = cy - R * v[2];
+    if (on) p.lineTo(x, y); else { p.moveTo(x, y); on = true; }
+  }
+  const a = Math.sin(Math.PI * Math.min(1, WIPE.u * 1.15)) * 0.9;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.globalAlpha = a * 0.28; ctx.strokeStyle = 'rgb(150,215,255)'; ctx.lineWidth = 14 * S; ctx.stroke(p);
+  ctx.globalAlpha = a * 0.9; ctx.strokeStyle = 'rgb(250,253,255)'; ctx.lineWidth = 1.8 * S; ctx.stroke(p);
+  ctx.restore();
+}
+
+// 화면 좌표 → 경위도(구 위에 없으면 null). 커서 고정 확대·측정망 적중 판정에 쓴다.
+function screenToLL(x, y){
+  const u = (x - cx) / R, v = (y - cy) / R, r2 = u * u + v * v;
+  if (r2 >= 1) return null;
+  const X = Math.sqrt(1 - r2), Y = u, Z = -v;
+  const ca = view.ca, sa = view.sa, ct = view.ct, st = view.st;
+  const x1 = X * ct - Z * st, z1 = Z * ct + X * st;
+  return [Math.atan2(-x1 * sa + Y * ca, x1 * ca + Y * sa) / D, Math.asin(clamp(z1, -1, 1)) / D];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  2. 전지구 측지 그래프망 — GraphCast 멀티메쉬 (정이십면체 0→3 세분)
+//     특정 도시를 특별히 잇지 않는다. 지구 어디서나 같은 밀도·같은 규칙으로 이어진 균질한 망이다.
+//     간선은 자신이 유래한 가장 굵은 레벨을 물려받아, 한 망 안에서 굵기가 층을 이룬다(01편과 같은 문법).
+// ═══════════════════════════════════════════════════════════════════════════
+const MESH_LEVEL = 3;
+// 레벨별 [선폭, 알파]. 밤 지구를 전제한 01편 값(최하 0.20)을 그대로 쓰면 밝은 낮 지면에서 하위 레벨이 사라진다.
+// 실측으로 한 단씩 올려 잡았다 — 사막·설빙 위에서도 망이 읽히는 하한이 0.36 이다.
+const LV_STYLE = [[1.75, 0.92], [1.25, 0.70], [0.95, 0.50], [0.75, 0.36]];
+function multiMesh(maxLevel){
+  const nrm = p => { const m = Math.hypot(p[0], p[1], p[2]); return [p[0] / m, p[1] / m, p[2] / m]; };
+  const g = (1 + Math.sqrt(5)) / 2;
+  const V = [[-1,g,0],[1,g,0],[-1,-g,0],[1,-g,0],[0,-1,g],[0,1,g],[0,-1,-g],[0,1,-g],
+             [g,0,-1],[g,0,1],[-g,0,-1],[-g,0,1]].map(nrm);
+  let F = [[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],
+           [3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+  let E = [], seen = new Set();
+  const push = (arr, s, a, b, l) => { const k = Math.min(a,b) + '_' + Math.max(a,b);
+    if (!s.has(k)){ s.add(k); arr.push([a, b, l]); } };
+  F.forEach(f => { push(E, seen, f[0], f[1], 0); push(E, seen, f[1], f[2], 0); push(E, seen, f[2], f[0], 0); });
+  for (let lvl = 1; lvl <= maxLevel; lvl++){
+    const mid = new Map();
+    const gm = (a, b) => { const k = Math.min(a,b) + '_' + Math.max(a,b);
+      if (!mid.has(k)){ mid.set(k, V.length); V.push(nrm([(V[a][0]+V[b][0])/2, (V[a][1]+V[b][1])/2, (V[a][2]+V[b][2])/2])); }
+      return mid.get(k); };
+    const E2 = [], s2 = new Set(), F2 = [];
+    E.forEach(e => { const m = gm(e[0], e[1]); push(E2, s2, e[0], m, e[2]); push(E2, s2, m, e[1], e[2]); });
+    F.forEach(f => { const ab = gm(f[0],f[1]), bc = gm(f[1],f[2]), ca = gm(f[2],f[0]);
+      push(E2, s2, ab, bc, lvl); push(E2, s2, bc, ca, lvl); push(E2, s2, ca, ab, lvl);
+      F2.push([f[0],ab,ca],[ab,f[1],bc],[ca,bc,f[2]],[ab,bc,ca]); });
+    E = E2; F = F2;
+  }
+  return { verts: V, edges: E };
+}
+const MESH = multiMesh(MESH_LEVEL);
+MESH.pos = MESH.verts.map(() => [0, 0, 0]);            // 프레임마다 채우는 시선 좌표
+MESH.lit = new Float32Array(MESH.verts.length);        // 노드 섬광 세기
+// 인접 리스트 — 정보 입자가 간선을 타고 다음 노드로 건너뛸 때 쓴다
+MESH.adj = MESH.verts.map(() => []);
+MESH.edges.forEach(([a, b], k) => { MESH.adj[a].push([b, k]); MESH.adj[b].push([a, k]); });
+// 간선 중점(파면 판정용) · 간선 중앙 각거리는 양 끝 평균으로 대신한다
+MESH.emid = MESH.edges.map(([a, b]) => {
+  const A = MESH.verts[a], B = MESH.verts[b];
+  const p = [(A[0]+B[0])/2, (A[1]+B[1])/2, (A[2]+B[2])/2], m = Math.hypot(p[0], p[1], p[2]);
+  return [p[0]/m, p[1]/m, p[2]/m];
+});
+
+// ── 정보 흐름 ①  파면 — 임의의 노드에서 시작해 그래프를 타고 번지는 섬광 ───────────────
+//    각거리를 시간축으로 쓴다(구면 위 등속 전파). 파면이 지나는 간선·노드가 순간적으로 밝아진다.
+//    파면은 좁고 빠르게 지나가야 '번진다'로 읽힌다. 넓게(σ 0.26) 3개를 동시에 돌렸더니
+//    보이는 반구가 통째로 물들어 지구가 사라졌다 — 폭을 절반으로 줄이고 2개만 살려 둔다.
+const WAVES = [];
+const WAVE_N = 2, WAVE_SP = 0.90, WAVE_SIG = 0.145, WAVE_END = Math.PI + 0.3;
+function spawnWave(seed, t0){
+  const s = MESH.verts[seed];
+  WAVES.push({ t0, dist: MESH.verts.map(v => Math.acos(clamp(v[0]*s[0] + v[1]*s[1] + v[2]*s[2], -1, 1))) });
+}
+// 첫 파면은 씨앗을 흩어 놓아 t=0 에서도 화면 여러 곳이 이미 밝다(첫 프레임 완성형 원칙)
+for (let i = 0; i < WAVE_N; i++) spawnWave((i * 211) % MESH.verts.length, -i * 1.7);
+let waveSeed = 7;
+// 파면은 **끝없이 돌지 않는다.** 전지구 화면에 들어설 때 두 세대(WAVE_N × WAVE_BURSTS)만 번지고 멈춘다 —
+// 계속 번지면 확대해 들어갈 때까지 화면이 쉬지 않고, 관객의 눈이 농도장이 아니라 섬광에 붙는다.
+// 남은 배정량(waveQuota)이 0 이면 새 파면을 만들지 않고, 진행 중인 파면은 끝까지 번지고 사라진다.
+// 배정량은 **전지구 버튼을 누를 때 · 사례를 갈 때** 다시 채운다(goStage · setCase). 새 씨앗은 파면이
+// 보일 때만 심으므로 ?view=kr 로 시작해도 첫 전지구 진입에서 온전히 두 번 번진다.
+// 농도장 노출은 latch 라(nodeRev) 파면이 멎어도 이미 드러난 농도장은 그대로 남는다.
+const WAVE_BURSTS = 2;
+let waveQuota = WAVE_N * (WAVE_BURSTS - 1);            // 위에서 1세대를 이미 심었다
+function armWaves(){ waveQuota = WAVE_N * WAVE_BURSTS; }
+
+// 파면 상태는 **그리기와 분리해** 매 프레임 나아간다(stepWaves ↔ drawMesh). 예전에는 lit 계산이
+// drawMesh 안에 있어, mesh 가중이 0 인 배율(동아시아 이상)에서는 그리기가 멎는 순간 파면 상태도
+// 함께 멎었다 — lit 이 마지막 프레임 값으로 얼어붙어 노출이 지리적으로 무의미한 얼룩으로 새어 나오고,
+// 122°E 동쪽(한반도)이 영구히 가려졌다. 상태는 항상 돌고 그리기만 가중이 가린다.
+//   revealByWave  지금 노출을 파면이 지는가. 파면이 화면에 있고 아직 번질 것이 남았을 때만 참이다.
+//     거짓이면(확대해 들어간 배율 · 두 세대를 다 쓴 뒤) 남은 노출을 스스로 채운다 — 파면이 없는
+//     화면에서 농도장을 붙들 이유가 없고, 그 붙듦이 곧 위 한반도 공백이었다.
+const REV_FILL = 1 / 1.2;                              // 파면이 없을 때 노출을 채우는 속도(초당) — 약 1.2초
+let revealByWave = true;
+function stepWaves(t, visible){
+  if (REDUCED) return;
+  const NV = MESH.verts.length;
+  // 다 번진 파면은 버린다. 화면 밖에서 다 번졌다면 배정량으로 **되돌려 준다** — 그러지 않으면
+  // ?view=ea 로 시작할 때 초기 세대가 아무도 못 본 채 소진되어 첫 전지구 진입이 한 세대만 번진다.
+  for (let i = WAVES.length - 1; i >= 0; i--) if ((t - WAVES[i].t0) * WAVE_SP > WAVE_END){
+    WAVES.splice(i, 1); if (!visible) waveQuota++;
+  }
+  // 새 씨앗은 파면이 보일 때만 심는다 — 배정량이 화면 밖에서 소진되면 첫 전지구 진입이 조용해진다.
+  if (visible) while (WAVES.length < WAVE_N && waveQuota > 0){
+    waveSeed = (waveSeed * 1103515245 + 12345) & 0x7fffffff;
+    spawnWave(waveSeed % NV, t); waveQuota--;
+  }
+  revealByWave = visible && (WAVES.length > 0 || waveQuota > 0);
+  MESH.lit.fill(0);
+  for (const w of WAVES){
+    const r = (t - w.t0) * WAVE_SP;
+    for (let i = 0; i < NV; i++){
+      const d = (w.dist[i] - r) / WAVE_SIG;
+      if (d > -2.6 && d < 2.6) MESH.lit[i] = Math.min(1, MESH.lit[i] + Math.exp(-d * d));
+    }
+  }
+}
+
+// ── 정보 흐름 ②  입자 — 간선을 건너뛰며 그래프를 돌아다니는 빛. 메시지 패싱을 눈으로 보게 한다 ──
+const RUNNER_N = 34;
+const RUNNERS = Array.from({ length: RUNNER_N }, (_, i) => {
+  const a = (i * 97) % MESH.verts.length, nb = MESH.adj[a][i % MESH.adj[a].length];
+  return { a, b: nb[0], e: nb[1], u: (i * 0.29) % 1, sp: 0.85 + (i % 5) * 0.16 };
+});
+function stepRunners(dt){
+  for (const r of RUNNERS){
+    r.u += dt * r.sp;
+    while (r.u >= 1){                                   // 도착 — 되돌아가지 않는 이웃을 골라 계속 흐른다
+      r.u -= 1;
+      const nbs = MESH.adj[r.b], pick = nbs[(Math.floor(r.u * 9973) + r.e * 7 + r.a) % nbs.length];
+      const alt = nbs[(nbs.indexOf(pick) + 1) % nbs.length];
+      const nxt = pick[0] === r.a && nbs.length > 1 ? alt : pick;
+      r.a = r.b; r.b = nxt[0]; r.e = nxt[1];
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  2.5 대기오염 농도장 — 지표 NO₂ · PM₂.₅ (aq_field.js)
+//      합성값이 아니라 실제 자료다(CAMS EAC4 재분석에 GEOS-CF 를 nesting). 수송·확산·소멸은
+//      자료 자체의 시간 변화이고 이 모듈은 그것을 재생하기만 한다. 자료가 덮는 동아시아 밖은
+//      칠하지 않는다 — 전지구를 채우면 없는 관측을 그린 그림이 된다.
+//      노출은 메시지 패싱이 진다. 파면(MESH.lit)이 지나간 노드에 노출도가 latch 되고,
+//      격자셀은 가까운 노드 3개의 노출도를 물려받는다 — 그래프가 지나간 자리에서 농도장이 드러난다.
+// ═══════════════════════════════════════════════════════════════════════════
+MESH.conc = new Float32Array(MESH.verts.length);       // 노드가 읽는 농도(0~1) — 노드 크기·색에 쓴다
+
+// 표시 램프는 물리값으로 정의한다 — 컬러바 눈금과 같은 값이고, 자산의 감마 부호화와 무관하게 읽힌다.
+//   낮은 농도는 알파를 0 에 두어 배경이 지구를 가리지 않게 하고, 환경기준 근처에서 색이 선다.
+//   PM₂.₅ 는 덱의 SDG 11·9 색(#FD9D24·#FD6925 계열), NO₂ 는 SDG 17 색(#19486A)에 기댄다.
+//   NO₂ 는 PM₂.₅ 보다 좁은 도시권 기둥으로 몰려 있어(영역 중위 1.3 ppb · 상위 5% 33 ppb) 문턱을 낮게 잡는다.
+//   저농도 색을 흰빛에 가깝게 두면 지면에서 통째로 사라진다 — 낮은 단부터 청록으로 채도를 준다.
+//   정지점은 환경기준·권고값에 걸어 둔다 — PM₂.₅ 15(WHO 24시간 권고)·35(국내 24시간 기준)·90(매우나쁨 위).
+//   NO₂ 는 수명이 짧아 배출원 근처에만 좁게 몰린다(영역 중위 1.3 ppb · 오염상자 야간 중위 15 ppb).
+//   PM₂.₅ 와 같은 문턱을 쓰면 화면이 비어 보여 배경(3 ppb)부터 색을 올린다. 색은 청록 계열을 버렸다 —
+//   같은 알파(평균 0.38, PM₂.₅ 와 동급)로 칠해도 녹색 대륙·청색 해양 위에서 파란 층은 대비가 없어 사라진다.
+//   보색인 자·홍(라벤더 → 자 → 마젠타)으로 옮기니 육지·바다 어디서나 읽힌다.
+//   O₃ 는 배경이 40 ppb 대로 높고 공간 구조가 넓게 퍼져 있어(자료도 선형 부호화) 문턱을 30 ppb 부터
+//   올린다 — 60 ppb 가 국내 8시간 기준, 100 ppb 가 1시간 기준이다. 색은 청록으로, PM₂.₅(호박)·NO₂(자홍)와
+//   섞이지 않는 계열을 골랐다. O₃ 는 광역이라 좁은 기둥인 NO₂ 와 달리 낮은 대비로도 형태가 읽힌다.
+const RAMP = {
+  pm25: [[0, '#FFE7A8', 0.00], [15, '#FFD267', 0.22], [35, '#FD9D24', 0.55],
+         [90, '#E4590C', 0.80], [300, '#8E1F10', 0.94]],
+  no2:  [[0, '#E9DAF6', 0.00], [3,  '#BE84E0', 0.26], [10, '#932BC4', 0.58],
+         [25, '#C21A8C', 0.80], [80, '#F0247A', 0.92]],
+  o3:   [[0, '#E4F7F4', 0.00], [30, '#7FD8D0', 0.22], [60, '#1E9FB4', 0.56],
+         [80, '#155F96', 0.78], [100, '#10306E', 0.90], [150, '#2A0A4A', 0.94]],
+};
+// ?ramp=no2hi — NO₂ 고농도 구간(25 ppb 이상)의 색 차이를 넓힌다(2026-10-17, 맺음 장 겨울 수도권). 기본 램프는 25 → 80 ppb 가
+//   같은 마젠타 계열이라 겨울 도심처럼 거의 전부가 25 ppb 를 넘는 날은 한 색으로 덮여 공간 구배가 안 보인다.
+//   자 → 마젠타 → 주황으로 끝을 넓힌다. 다른 장(표지 등)은 이 매개변수를 주지 않으므로 그대로다.
+if (Q.get('ramp') === 'no2hi')
+  RAMP.no2 = [[0, '#E9DAF6', 0.00], [10, '#BE84E0', 0.30], [25, '#932BC4', 0.62], [40, '#C21A8C', 0.80],
+              [55, '#F0247A', 0.88], [80, '#FFB43D', 0.94]];   // 55 → 80 사이가 마젠타 → 주황으로 번진다(정지점을 더 두면 범례 눈금이 겹친다)
+const SP_KEYS = ['pm25', 'no2', 'o3'];                 // 교대 순서 — PM₂.₅ 로 시작한다
+const SP_HOLD = 15, SP_FADE = 2.0;                     // 한 물질을 보여 주는 시간 · 교차 소멸 시간(초)
+
+// 물질 혼합비 — SP_KEYS 순서의 비중 배열. 교대 중에는 두 층을 알파로 녹여 섞는다.
+function speciesMix(t){
+  const fixed = SP_KEYS.indexOf(spMode);
+  const m = [0, 0, 0];
+  if (fixed >= 0){ m[fixed] = 1; return m; }
+  // 연간 사례에서는 **한 바퀴에 한 물질**이다. 15초마다 물질이 바뀌면 42초짜리 1년 재생 중에 두 번 바뀌어
+  // 관객이 물질 교대를 계절 변화로 읽는다. 교대 주기를 재생 길이에 맞추면 교대가 12월→1월 이음에서
+  // 일어나(그 구간은 앞뒤가 모두 한겨울이라) 눈에 걸리지 않는다.
+  const daily = FIELD && FIELD.meta.agg === 'daily-kst';
+  // 속도 배수를 함께 반영한다 — 2배로 빨리 감으면 1년도 절반 시간에 끝나므로 교대도 그만큼 빨라야
+  // '한 바퀴에 한 물질' 이 유지된다.
+  const hold = daily ? Math.max(YEAR_SECS / SPEED - SP_FADE, 4) : SP_HOLD;
+  const step = hold + SP_FADE, P = step * SP_KEYS.length, u = ((t % P) + P) % P;
+  const k = Math.floor(u / step), r = u - k * step;
+  if (r < SP_HOLD) m[k] = 1;
+  else { const w = (r - SP_HOLD) / SP_FADE; m[k] = 1 - w; m[(k + 1) % SP_KEYS.length] = w; }
+  return m;
+}
+
+function makeFIELD(ASSET){
+  if (!FIELD_ON || !ASSET) return null;
+  const M = ASSET.meta;
+  const nx = M.nx, ny = M.ny, nt = M.nframes, dl = M.dl;
+  const lonA = M.lon0, lonB = M.lon0 + (nx - 1) * dl;          // 자료 영역(경도)
+  const latB = M.lat0, latA = M.lat0 - (ny - 1) * dl;          // lat0 이 첫 행(북)
+  const NC = nx * ny, NV = MESH.verts.length;
+  const WRAP = 6;                                              // 반복 이음에 겹치는 프레임 수
+  const LOOP = nt - WRAP - 1;                                  // 재생 길이 — 꼬리 WRAP 을 머리에 녹인다
+  const T0 = Date.parse(M.t0);
+  // 프레임 간격 — 창 사례는 1시간, 연간 일평균 사례는 24시간이다. shownH(공유 시계)는 **시간** 단위로
+  // 내보내야 1km·측정망 층이 자기 dtHours 로 나눠 자기 프레임을 찾을 수 있다.
+  const DT = M.dtHours || 1;
+  const DAILY = M.agg === 'daily-kst';                         // 프레임이 순간이 아니라 하루의 평균이다
+  // 재생 속도 — 창 사례는 '시간/초'(tspd)로 잡지만, 364일을 3시간/초로 흘리면 48분이 걸린다.
+  // 연간은 '전체를 몇 초에 흘리는가'(yspd)로 잡는 편이 발표에서 다루기 쉽다.
+  const FPS0 = DAILY ? LOOP / YEAR_SECS : HR_PER_S / DT;       // 배수 1.0 일 때의 초당 프레임
+  const rate = () => FPS0 * SPEED;
+  // 속도를 바꿔도 위상이 튀지 않게 기준점(pRef, tRef)을 옮겨 가며 센다. 배수가 1 로 고정이면
+  // pRef=WRAP · tRef=0 이라 p = (WRAP + t·FPS0) % LOOP 그대로다 — ?t0= 캡처 재현성이 유지된다.
+  // REDUCED(동작 최소화)는 **배속 0** 으로 둔다. 예전에는 p 를 30 으로 못박았는데, 그러면 시각 바를
+  // 끌어도 화면이 그대로다 — 배속 0 이면 멎어 있는 것은 같고 바로 프레임을 고를 수 있다.
+  let pRef = REDUCED ? 30 : WRAP, tRef = 0, fpsCur = REDUCED ? 0 : FPS0 * SPEED, tNow = 0;
+  const phaseAt = t => (((pRef + (t - tRef) * fpsCur) % LOOP) + LOOP) % LOOP;
+  // 시각 바가 끌린 순간 — 위상을 그 자리로 옮긴다(속도 변경과 같은 기준점 이동 규약이라 튀지 않는다).
+  //   바가 다루는 구간은 [WRAP, LOOP] 다. 머리 WRAP 프레임은 꼬리와 겹쳐 녹인 이음 자리라 두 시각이
+  //   섞인 화면이고 표기도 꼬리 시각이 나온다 — 손으로 세워 둘 자리가 아니므로 바에서 뺀다.
+  function seek(u){ pRef = WRAP + clamp(u, 0, 1) * (LOOP - WRAP); tRef = tNow; }
+  // 위상 → 손잡이 자리. 이음 구간에서는 shownH 와 같은 규약으로 접어 표기와 손잡이가 어긋나지 않게 한다.
+  function posOf(p){
+    const wt = p < WRAP ? 1 - p / WRAP : 0;
+    return clamp(((wt > 0.5 ? p + LOOP : p) - WRAP) / (LOOP - WRAP), 0, 1);
+  }
+  const FEATH = 5;                                             // 자료 경계 페더 폭(격자 칸 = 2.5°)
+  // 자료 경계 감쇠(2026-10-02, 3장 영상 개선 4번) — 종전 직사각 페더(2.5°)는 오존처럼 바다 위 배경 농도가 높은
+  //  물질에서 사각 베일과 동경 149.5° 의 곧은 세로 경계로 읽혔다. 모서리가 둥근 초타원(지수 4) 거리로 바깥 22 % 를
+  //  녹인다 — 한반도(가운데)는 그대로이고 홋카이도(143°E)까지 대부분 남는다. 직사각 페더도 곱해 자료 밖은 반드시 0 이다.
+  function edgeW(gx, gy){
+    const ux = Math.abs(gx / (nx - 1) * 2 - 1), uy = Math.abs(gy / (ny - 1) * 2 - 1);
+    const r = Math.pow(ux ** 4 + uy ** 4, 0.25), e = clamp((1 - r) / 0.22, 0, 1);
+    const eg = clamp(Math.min(gx, nx - 1 - gx) / FEATH, 0, 1) * clamp(Math.min(gy, ny - 1 - gy) / FEATH, 0, 1);
+    return e * e * (3 - 2 * e) * eg * eg * (3 - 2 * eg);
+  }
+
+  const raw = { pm25: null, no2: null, o3: null };             // Uint8Array(NC * nt) — 행=셀, 열=시각
+  const cur = { pm25: new Float32Array(NC), no2: new Float32Array(NC), o3: new Float32Array(NC) };
+  const rev = new Float32Array(NC);                            // 셀 노출도
+  const nodeRev = new Float32Array(NV);                        // 노드 노출도 — 파면이 latch 한다
+  const nodeLL = MESH.verts.map(v => [Math.atan2(v[1], v[0]) / D, Math.asin(clamp(v[2], -1, 1)) / D]);
+  let map = null, ready = false, mix = [1, 0, 0], shownH = 0;
+  const domKey = () => SP_KEYS[mix.indexOf(Math.max(mix[0], mix[1], mix[2]))];   // 지금 우세한 물질
+
+  // 첫 프레임 완성형 — t=0 에서 서쪽(대륙)은 이미 드러나 있고 동쪽이 파면을 따라 채워진다.
+  // 사례의 수송 방향(서 → 동)과 같은 방향이라 노출 자체가 수송처럼 읽힌다.
+  for (let k = 0; k < NV; k++) nodeRev[k] = clamp((122 - nodeLL[k][0]) / 14, 0, 1);
+
+  const hx = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const encOf = sp => c => 255 * Math.pow(clamp(c / M.species[sp].cmax, 0, 1), 1 / M.species[sp].gamma);
+  // 물리값 램프 → 256단 LUT(r,g,b,a). 자산 바이트값이 그대로 색인이다.
+  const LUT = {};
+  for (const sp of SP_KEYS){
+    const e = encOf(sp), st = RAMP[sp].map(([c, h, a]) => [e(c), hx(h), a]);
+    const t = new Float32Array(256 * 4);
+    for (let v = 0; v < 256; v++){
+      let k = 0; while (k < st.length - 2 && v > st[k + 1][0]) k++;
+      const u = clamp((v - st[k][0]) / Math.max(st[k + 1][0] - st[k][0], 1e-6), 0, 1);
+      for (let ch = 0; ch < 3; ch++) t[v * 4 + ch] = lerp(st[k][1][ch], st[k + 1][1][ch], u);
+      t[v * 4 + 3] = lerp(st[k][2], st[k + 1][2], u);
+    }
+    LUT[sp] = t;
+  }
+
+  // 격자셀 ← 가장 가까운 노드 3개(가우시안 가중). 초기화 때 한 번만 푼다(6,100 × 642 회).
+  function buildMap(){
+    const idx = new Int32Array(NC * 3), wgt = new Float32Array(NC * 3), nv = MESH.verts;
+    const g = d => Math.exp(-Math.pow(Math.acos(clamp(d, -1, 1)) / 0.11, 2));
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++){
+      const c = ll2v(lonA + i * dl, latB - j * dl);
+      let b0 = 0, b1 = 0, b2 = 0, d0 = -2, d1 = -2, d2 = -2;
+      for (let k = 0; k < NV; k++){
+        const d = nv[k][0] * c[0] + nv[k][1] * c[1] + nv[k][2] * c[2];
+        if (d > d0){ d2 = d1; b2 = b1; d1 = d0; b1 = b0; d0 = d; b0 = k; }
+        else if (d > d1){ d2 = d1; b2 = b1; d1 = d; b1 = k; }
+        else if (d > d2){ d2 = d; b2 = k; }
+      }
+      const q = (j * nx + i) * 3, w0 = g(d0), w1 = g(d1), w2 = g(d2), s = w0 + w1 + w2 || 1;
+      idx[q] = b0; idx[q + 1] = b1; idx[q + 2] = b2;
+      wgt[q] = w0 / s; wgt[q + 1] = w1 / s; wgt[q + 2] = w2 / s;
+    }
+    return { idx, wgt };
+  }
+
+  // 아틀라스 해독 — 행이 격자셀, 열이 시각이다. R=NO₂ · G=PM₂.₅ · B=O₃.
+  const img = new Image();
+  img.onload = () => {
+    const oc = document.createElement('canvas'); oc.width = nt; oc.height = NC;
+    const c2 = oc.getContext('2d', { willReadFrequently: true });
+    c2.drawImage(img, 0, 0);
+    const d = c2.getImageData(0, 0, nt, NC).data, n = NC * nt;
+    raw.no2 = new Uint8Array(n); raw.pm25 = new Uint8Array(n); raw.o3 = new Uint8Array(n);
+    for (let i = 0; i < n; i++){ raw.no2[i] = d[i * 4]; raw.pm25[i] = d[i * 4 + 1]; raw.o3[i] = d[i * 4 + 2]; }
+    map = buildMap();
+    ready = true;
+  };
+  img.src = ASSET.src;
+
+  // 셀 격자 위 이중선형 샘플(격자 좌표 gx, gy — 범위 밖은 가장자리로 고정)
+  function samp(arr, gx, gy){
+    const x0 = Math.floor(clamp(gx, 0, nx - 1.001)), y0 = Math.floor(clamp(gy, 0, ny - 1.001));
+    const fx = clamp(gx - x0, 0, 1), fy = clamp(gy - y0, 0, 1), x1 = x0 + 1, y1 = y0 + 1;
+    const a = arr[y0 * nx + x0], b = arr[y0 * nx + x1], c = arr[y1 * nx + x0], e = arr[y1 * nx + x1];
+    return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + e * fx) * fy;
+  }
+
+  // 프레임 상태 갱신 — ① 노드 노출 latch ② 자료 시각 보간 ③ 셀 노출 ④ 노드가 읽는 농도
+  function step(t, dt){
+    mix = speciesMix(t);
+    tNow = t;                                          // seek 이 기준점을 옮길 때 쓰는 지금 시각
+    if (!ready) return;
+    if (REVEAL_ON && !REDUCED){
+      // 파면이 노출을 지는 동안은 파면이 지나간 자리만 드러난다. 파면이 없으면(확대한 배율 ·
+      // 두 세대를 다 쓴 뒤) 남은 자리를 REV_FILL 로 채운다 — 사례를 갈아도 노출이 갇히지 않는다.
+      const fill = revealByWave ? 0 : REV_FILL;
+      for (let k = 0; k < NV; k++){
+        const v = nodeRev[k] + (MESH.lit[k] * 2.2 + fill) * dt;  // 파면 한 번에 약 0.7 — 두 번쯤 지나면 다 드러난다
+        nodeRev[k] = v > 1 ? 1 : v;
+      }
+    } else nodeRev.fill(1);
+
+    // 반복 이음 — 꼬리 WRAP 프레임을 머리에 겹쳐 녹인다(3일치 종합 상황이 한 시간에 튀지 않게).
+    //   시작 위상을 WRAP 만큼 밀어 첫 프레임이 이음 구간(두 시각이 겹친 화면)에 걸리지 않게 한다.
+    const f = (SCRUB || PAUSED || REDUCED) ? 0 : rate();  // 붙들기·정지·동작 최소화에서는 시계가 멎는다
+    if (f !== fpsCur){ pRef = phaseAt(t); tRef = t; fpsCur = f; }   // 슬라이더가 움직인 순간
+    const p = phaseAt(t);
+    const f0 = Math.floor(p), fr = p - f0, f1 = f0 + 1;
+    const wt = p < WRAP ? 1 - p / WRAP : 0, g0 = f0 + LOOP, g1 = g0 + 1;
+    shownH = (wt > 0.5 ? p + LOOP : p) * DT;                    // 프레임 → 시간 (창 사례는 DT=1 이라 그대로다)
+    for (let si = 0; si < SP_KEYS.length; si++){
+      if (mix[si] <= 0.002) continue;                  // 화면에 없는 물질은 보간하지 않는다
+      const A = raw[SP_KEYS[si]], C = cur[SP_KEYS[si]];
+      for (let c = 0; c < NC; c++){
+        const b = c * nt;
+        let v = A[b + f0] * (1 - fr) + A[b + f1] * fr;
+        if (wt > 0) v = v * (1 - wt) + (A[b + g0] * (1 - fr) + A[b + g1] * fr) * wt;
+        C[c] = v;
+      }
+    }
+    const mi = map.idx, mw = map.wgt;
+    for (let c = 0; c < NC; c++){
+      const q = c * 3;
+      rev[c] = nodeRev[mi[q]] * mw[q] + nodeRev[mi[q + 1]] * mw[q + 1] + nodeRev[mi[q + 2]] * mw[q + 2];
+    }
+    // 노드가 읽는 농도 — 우세 물질의 표시값을 그대로 쓴다(노드 크기·색에만 쓰는 진폭이다)
+    const dom = cur[domKey()];
+    for (let k = 0; k < NV; k++){
+      const lo = nodeLL[k][0], la = nodeLL[k][1];
+      if (lo < lonA || lo > lonB || la < latA || la > latB){ MESH.conc[k] = 0; continue; }
+      const gx = (lo - lonA) / dl, gy = (latB - la) / dl;
+      MESH.conc[k] = samp(dom, gx, gy) / 255 * samp(rev, gx, gy);
+    }
+  }
+
+  // ── 농도장 층 — 보이는 구 좌표 사각형에 구면 역투영으로 칠한다(renderEarth 와 같은 규약).
+  //    텍스처와 분리한 이유는 갱신 주기가 다르기 때문이다. 텍스처는 시선을 양자화해 재사용하지만
+  //    농도장은 매 프레임 시각·노출이 바뀐다. 대신 해상도를 절반쯤으로 낮춘다 — 부드러운 장이라
+  //    확대해도 계단이 보이지 않는다. 1km 층(KRF)이 덮는 화소는 그쪽에 양보한다(가중 kmW).
+  const foff = document.createElement('canvas'), fctx = foff.getContext('2d');
+  function layer(dpr, kmW){
+    if (!ready || !vr) return null;
+    const [u0, u1, v0, v1] = vr;
+    // 해상도 상한 — 자료가 0.5° 격자이므로 한 칸에 2.6 px 이상 찍는 것은 낭비다.
+    // 확대할 때 화면 해상도를 따라가면(초기 구현) 한 칸에 50 px 을 찍어 13 fps 까지 떨어졌다.
+    const scr = R * Math.PI / 180, ppd = Math.min(scr * clamp(dpr * 0.55, 0.42, 1.0), 2.6 / dl);
+    const Nx = clamp(Math.round((u1 - u0) * R / scr * ppd), 40, 900);
+    const Ny = clamp(Math.round((v1 - v0) * R / scr * ppd), 40, 900);
+    if (foff.width !== Nx || foff.height !== Ny){ foff.width = Nx; foff.height = Ny; }
+    const im = fctx.createImageData(Nx, Ny), o = im.data;
+    const ca = Math.cos(-view.lon * D), sa = Math.sin(-view.lon * D), ct = view.ct, st = view.st;
+    const W3 = mix, L3 = [LUT.pm25, LUT.no2, LUT.o3], C3 = [cur.pm25, cur.no2, cur.o3];
+    for (let j = 0; j < Ny; j++){
+      const py = v0 + (j + 0.5) / Ny * (v1 - v0);
+      for (let i = 0; i < Nx; i++){
+        const px = u0 + (i + 0.5) / Nx * (u1 - u0);
+        const r2 = px * px + py * py, q = (j * Nx + i) * 4;
+        if (r2 >= 1){ o[q + 3] = 0; continue; }
+        const X = Math.sqrt(1 - r2), Y = px, Z = -py;
+        const x1 = X * ct - Z * st, z1 = Z * ct + X * st;
+        const x = x1 * ca + Y * sa, y = -x1 * sa + Y * ca;
+        const lat = Math.asin(clamp(z1, -1, 1)) / D, lon = Math.atan2(y, x) / D;
+        const gx = (lon - lonA) / dl, gy = (latB - lat) / dl;
+        if (gx < 0 || gx > nx - 1 || gy < 0 || gy > ny - 1){ o[q + 3] = 0; continue; }
+        // 자료 경계 페더 · 림 감쇠 — 경계를 자른 티가 나지 않게, 림에서는 정면보다 옅게
+        let av = edgeW(gx, gy) * samp(rev, gx, gy) * clamp(X * 2.2, 0, 1);
+        // 1km 층이 들어오면 광역 층은 통째로 물러난다(덮이는 곳만이 아니라 전부).
+        // 두 자료의 수준이 다르기 때문이다 — 이 창에서 CAMS 재분석 PM2.5 는 관측의 1.89 배다.
+        // 나란히 두면 해안선을 경계로 색이 튀어 관객이 렌더 오류로 읽는다. 단계마다 한 자료만 보여 준다.
+        //  와이프 중에는 1km 가 드러난 자리에서만 물러난다(kmMask). 블록 모드는 매끈한 층 대신 칸을 그린다(blocks).
+        if (kmW > 0.002) av *= 1 - kmW * kmMask(lon, lat);
+        if (BLK > 0.002) av *= 1 - BLK;
+        if (av < 0.004){ o[q + 3] = 0; continue; }
+        let pr = 0, pg = 0, pb = 0, pa = 0;                    // 프리멀티플라이드로 물질 층을 겹친다
+        for (let s = 0; s < 3; s++){
+          const w = W3[s]; if (w <= 0.002) continue;
+          const L = L3[s], k = (Math.round(samp(C3[s], gx, gy)) | 0) * 4, a = L[k + 3] * w;
+          pr += L[k] * a; pg += L[k + 1] * a; pb += L[k + 2] * a; pa += a;
+        }
+        if (pa < 1e-4){ o[q + 3] = 0; continue; }
+        o[q] = pr / pa; o[q + 1] = pg / pa; o[q + 2] = pb / pa;
+        o[q + 3] = 255 * clamp(pa * av, 0, 1);
+      }
+    }
+    fctx.putImageData(im, 0, 0);
+    return foff;
+  }
+
+  // 칸 그대로 그리기(blocks, 2026-10-02) — 0.5° 칸마다 그 칸의 값 한 색으로 칠하고 얇은 경계선을 긋는다.
+  //  오프스크린 래스터(layer)는 해상도 상한(칸당 2.6 px)이라 확대하면 칸 경계가 번진다 — 칸 꼭짓점을 화면에
+  //  투영해 다각형으로 칠하므로 어느 배율에서나 경계가 또렷하다. 색·알파 규약은 layer 와 같다(LUT · 페더 · 노출 · 림).
+  //  꼭짓점은 칸 중심 격자의 반 칸 바깥(nx+1 × ny+1)이고, 프레임마다 한 번 투영한다(약 6,300 점).
+  const BX = new Float32Array((nx + 1) * (ny + 1)), BY = new Float32Array((nx + 1) * (ny + 1)), BD = new Float32Array((nx + 1) * (ny + 1));
+  function blocks(a, kmW){
+    if (!ready || a < 0.01) return;
+    const v = [0, 0, 0];
+    for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++){
+      toView(ll2v(lonA + (i - 0.5) * dl, latB - (j - 0.5) * dl), v);
+      const q = j * (nx + 1) + i; BX[q] = cx + R * v[1]; BY[q] = cy - R * v[2]; BD[q] = v[0];
+    }
+    const L3 = [LUT.pm25, LUT.no2, LUT.o3], C3 = [cur.pm25, cur.no2, cur.o3], grid = new Path2D();
+    ctx.save();
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++){
+      const q0 = j * (nx + 1) + i, q1 = q0 + 1, q2 = q0 + nx + 2, q3 = q0 + nx + 1;
+      if (BD[q0] <= 0 || BD[q1] <= 0 || BD[q2] <= 0 || BD[q3] <= 0) continue;
+      const x0 = Math.min(BX[q0], BX[q3]), x1 = Math.max(BX[q1], BX[q2]), y0 = Math.min(BY[q0], BY[q1]), y1 = Math.max(BY[q2], BY[q3]);
+      if (x1 < 0 || x0 > W || y1 < 0 || y0 > H) continue;
+      const c = j * nx + i;
+      const lon = lonA + i * dl, lat = latB - j * dl;
+      let av = edgeW(i, j) * rev[c] * clamp((BD[q0] + BD[q2]) * 1.1, 0, 1) * a;
+      if (kmW > 0.002) av *= 1 - kmW * kmMask(lon, lat);
+      if (av < 0.004) continue;
+      let pr = 0, pg = 0, pb = 0, pa = 0;
+      for (let s = 0; s < 3; s++){
+        const w = mix[s]; if (w <= 0.002) continue;
+        const L = L3[s], k = (Math.round(C3[s][c]) | 0) * 4, al = L[k + 3] * w;
+        pr += L[k] * al; pg += L[k + 1] * al; pb += L[k + 2] * al; pa += al;
+      }
+      if (pa < 1e-4) continue;
+      ctx.fillStyle = `rgba(${(pr / pa) | 0},${(pg / pa) | 0},${(pb / pa) | 0},${clamp(pa * av, 0, 1).toFixed(3)})`;
+      ctx.beginPath(); ctx.moveTo(BX[q0], BY[q0]); ctx.lineTo(BX[q1], BY[q1]); ctx.lineTo(BX[q2], BY[q2]); ctx.lineTo(BX[q3], BY[q3]); ctx.closePath();
+      ctx.fill();
+      //  경계선은 색이 보이는 칸에만 — 깨끗한 바다까지 그으면 화면이 격자로 덮여 농도보다 선이 먼저 읽혔다(실측)
+      if (pa * av > 0.12){ grid.moveTo(BX[q3], BY[q3]); grid.lineTo(BX[q0], BY[q0]); grid.lineTo(BX[q1], BY[q1]); }   // 위·왼 변만 — 이웃이 나머지를 긋는다
+    }
+    const cellPx = Math.hypot(BX[1] - BX[0], BY[1] - BY[0]);
+    ctx.globalAlpha = a * 0.55; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = clamp(cellPx * 0.025, 0.6, 1.4);
+    ctx.stroke(grid);
+    ctx.restore();
+  }
+
+  // 자료 시각 문구 — 범례와 조작 패널의 '시각' 바가 같은 문구를 쓴다(두 곳이 어긋나지 않게 한 곳에 둔다).
+  //   프레임이 하루의 평균이면 **시각이 아니라 날짜**를 적는다. 시간별·일평균 모두 자산의 UTC 기준에
+  //   9 시간을 더해 KST 로 읽는다. 일평균을 시각으로 적으면 '그 순간의 농도'로 오해된다.
+  function stamp(){
+    const d = new Date(T0 + (shownH + 9) * 3600e3);
+    const p2 = n => String(n).padStart(2, '0');
+    const ymd = `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`;
+    return DAILY ? `${ymd} KST 일평균` : `${ymd} ${p2(d.getUTCHours())}:00 KST`;
+  }
+
+  // 범례 — 물질·단위·컬러바·자료 시각·출처. 캔버스에 그려 패널 모드에서도 남는다.
+  //   src1 은 지금 화면을 지배하는 자료의 출처다 — 확대해 1km 추론으로 넘어가면 함께 바뀐다.
+  function legend(src1, src2){
+    if (!CBAR_ON || !ready) return;
+    const dk = domKey(), sp = M.species[dk];
+    const a = clamp(Math.max(mix[0], mix[1], mix[2]) * 2 - 1, 0, 1);   // 교대 중엔 사그라지고 새 물질로 돌아온다
+    if (a < 0.03) return;
+    const mg = clamp(W * 0.034, 28, 64), x1 = W - mg, y = clamp(H * 0.036, 24, 52);
+    // 2026-10-02(3장 영상 개선 7번) — 약 1.35배 키웠다. 1600×900 에서 눈금·시각 글자가 약 10 px 이라 투사 화면 뒷자리에서
+    //  읽히지 않았다. 하한도 함께 올려(본문 12.5 px) 작은 창에서도 눈금이 뭉개지지 않게 한다.
+    const f1 = clamp(17.5 * S, 14, 24), f2 = clamp(14 * S, 12.5, 20);
+    const bw = clamp(205 * S, 150, 280), bh = clamp(10.5 * S, 9, 16), x0 = x1 - bw;
+    ctx.save(); ctx.globalAlpha = a * LEG_A; ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+    // 옅은 받침 — 범례가 짙은 해양·지형 위에 앉을 때(동아시아 단계) 먹색 활자가 읽히지 않는다
+    const padX = clamp(11 * S, 8, 16), padY = clamp(9 * S, 7, 14);
+    ctx.beginPath();
+    ctx.roundRect(x0 - padX, y - padY, bw + padX * 2, f1 * 1.7 + bh + f2 * 5.4 + padY * 1.4, clamp(7 * S, 5, 11));
+    ctx.fillStyle = 'rgba(255,255,255,.80)'; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(17,21,26,.10)'; ctx.stroke();
+    ctx.font = `700 ${f1.toFixed(1)}px 'Inter','Noto Sans KR',sans-serif`; ctx.fillStyle = '#11151a';
+    ctx.fillText(`${sp.label} 지표 농도 (${sp.unit})`, x1, y + f1);
+    // 컬러바 — 램프 정지점을 값 축(감마 부호화) 위치에 그대로 놓는다
+    const by = y + f1 * 1.7, e = encOf(dk);
+    const gr = ctx.createLinearGradient(x0, 0, x1, 0);
+    for (const [c, hex, al] of RAMP[dk]){
+      const [r, g, b] = hx(hex);
+      gr.addColorStop(clamp(e(c) / 255, 0, 1), `rgba(${r},${g},${b},${(al / 0.92).toFixed(3)})`);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.72)'; ctx.fillRect(x0 - 1, by - 1, bw + 2, bh + 2);
+    ctx.fillStyle = gr; ctx.fillRect(x0, by, bw, bh);
+    ctx.strokeStyle = 'rgba(17,21,26,.22)'; ctx.lineWidth = 1; ctx.strokeRect(x0, by, bw, bh);
+    ctx.font = `500 ${f2.toFixed(1)}px 'Inter','Noto Sans KR',sans-serif`; ctx.fillStyle = '#4b555e';
+    let lastTick = -1;
+    for (const [c] of RAMP[dk]){                           // 눈금은 램프 정지점의 물리값 그대로다
+      const u = clamp(e(c) / 255, 0, 1);
+      if (u - lastTick < 0.03 && lastTick >= 0) continue;   // 겹치는 눈금은 건너뛴다(사례별 cmax 차이 때문)
+      lastTick = u;
+      const xx = x0 + bw * u;
+      ctx.textAlign = c === 0 ? 'left' : (u > 0.98 ? 'right' : 'center');
+      ctx.fillText(String(c), xx, by + bh + f2 * 1.15);
+    }
+    ctx.textAlign = 'right';
+    ctx.font = `700 ${f2.toFixed(1)}px 'Inter','Noto Sans KR',sans-serif`; ctx.fillStyle = '#19486A';
+    ctx.fillText(stamp(), x1, by + bh + f2 * 2.6);
+    ctx.font = `400 ${(f2 * 0.94).toFixed(1)}px 'Inter','Noto Sans KR',sans-serif`; ctx.fillStyle = '#6f7a84';
+    ctx.fillText(src1 || 'CAMS EAC4 재분석 · GEOS-CF', x1, by + bh + f2 * 3.9);
+    ctx.fillText(src2 || `${lonA}–${lonB}°E · ${latA}–${latB}°N`, x1, by + bh + f2 * 5.0);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.restore();
+  }
+
+  return { step, layer, blocks, legend, domKey, seek, lut: LUT, get mix(){ return mix; },
+           get ready(){ return ready; }, get shownH(){ return shownH; }, meta: M,
+           get pos(){ return LOOP > WRAP ? posOf(phaseAt(tNow)) : 0; },   // 시각 바 손잡이 자리(0~1)
+           get stamp(){ return stamp(); } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  3. 지구 텍스처 — 화소 단위 정사영 역투영 + 이중선형 샘플 + 주광 음영
+// ═══════════════════════════════════════════════════════════════════════════
+// 텍스처는 여러 장이 겹친다 — 전지구 1장(항상) + 확대용 정밀 타일(basemap.js, 있으면).
+// 화소마다 '그 화소를 덮는 가장 정밀한 타일'을 골라 쓰고, 타일 경계에서는 feather 도만큼 상위 타일과 섞는다.
+// 배율에 따라 통째로 갈아 끼우지 않는 이유는 그러면 전환 순간 화면이 툭 튀기 때문이다.
+function loadTex(src, extra, lazy){
+  const t = Object.assign({ data: null, w: 0, h: 0, zw: 0, primed: false }, extra);
+  t.prime = () => {                                  // 필요해질 때 비로소 내려 읽는다(지연 로딩)
+    if (t.primed) return; t.primed = true;
+    const img = new Image(); INFLIGHT++;               // 화소 해독까지가 '읽는 중'이다(고정 신호 checkSettle)
+    img.onload = () => {
+      INFLIGHT--;
+      const oc = document.createElement('canvas'); oc.width = img.width; oc.height = img.height;
+      const c = oc.getContext('2d', { willReadFrequently: true });
+      c.drawImage(img, 0, 0);
+      t.data = c.getImageData(0, 0, img.width, img.height).data; t.w = img.width; t.h = img.height;
+      eSig = '';                                     // 새 텍스처가 들어오면 캐시를 버린다
+    };
+    img.onerror = () => { INFLIGHT--; };
+    img.src = src;
+  };
+  if (!lazy) t.prime();
+  return t;
+}
+let TEX = null;                                        // 전지구 {data,w,h,bbox}
+if (typeof EARTH_DAY !== 'undefined') TEX = loadTex(EARTH_DAY.src, { bbox: EARTH_DAY.bbox || [-180, -90, 180, 90] });
+// 정밀 타일 — 좁은(정밀한) 것이 뒤에 오도록 면적 내림차순으로 세운다
+const tileArea = t => (t.bbox[2] - t.bbox[0]) * (t.bbox[3] - t.bbox[1]);
+// 같은 bbox 가 겹칠 때(한반도 style 타일과 basemap 의 kr 타일)는 **배경지도가 위에** 와야 한다.
+// 면적만으로 세우면 순서가 삽입 차례에 달려 있어, 자산이 늦게 도착하면 뒤집힌다.
+const tierRank = t => (t.tier === 'city' ? 3 : t.tier === 'detail' ? 2 : t.tier === 'style' ? 1 : 0);
+const fineOrder = (a, b) => (tileArea(b) - tileArea(a)) || (tierRank(a) - tierRank(b));
+const FINE = (typeof BASEMAP !== 'undefined' ? BASEMAP.tiles : [])
+  .map(t => loadTex(t.src, { bbox: t.bbox, feather: t.feather ?? 0.5, key: t.key, natW: t.w }, true))
+  .sort(fineOrder);
+
+// ── 배경지도(stylemap_<종류>_<범위>.js) ───────────────────────────────────────
+// basemap 의 kr 타일은 0.00233°/px 의 ASTER 힐쉐이드 하나뿐이고, 모듈이 한반도 배율에서 탈색을
+// 1.0 까지 올려 명도만 남긴다. 그래서 그 구간이 통째로 흑백이었고 도시·산림·교외가 한 회색으로
+// 뭉갰다(2026-08-30 사용자 지적). 이제 배율마다 **컬러 배경지도**를 따로 얹는다.
+//
+//   · 범위 kr      — basemap 의 kr 타일과 같은 bbox·같은 페더. 그 위에 겹쳐 색을 준다.
+//   · 범위 <권역>  — 예전 detail 타일이 놓이던 자리. 최대 배율에서 시가지·산림이 또렷해진다.
+//
+// 종류는 세 가지고(MAPSTYLES) 화면에서 고른다. **한 번에 한 종류만 읽는다** — 세 종류 × 일곱
+// 범위를 다 안으면 50 MB 다. 종류를 갈면 이전 종류의 화소를 놓는다(setMapStyle).
+// 얹는 방법은 basemap 타일과 똑같다(면적 순 정렬 · 페더 · zw). 다른 것은 `tier`·`sat` 둘뿐이고,
+// 그 표시가 아래 두 곳에서 쓰인다 — 배율 문지기(updateTexZoomW)와 탈색 되돌림(cw).
+const DETAIL_PAD = 0.30;                              // build_stylemap.py 의 PAD 와 같아야 한다
+const detailAsked = new Set();
+// ⚠ **읽는 때와 보이는 때는 다르다.** 자산은 z 8(한반도로 들어서는 무렵)에 미리 읽고,
+//   화면에는 z 60 부터 배어 나온다(updateTexZoomW 의 문지기). 둘을 한 배율로 묶었더니
+//   3480x3120 base64 를 내려 디코드하는 사이에 카메라가 이미 최대 배율에 닿아 있었다
+//   — 도입 영상은 z 40 에서 103 까지 몇 초 만에 간다. 실측에서 그 구간 내내 data=null 이었다.
+const DETAIL_LOAD_Z = 8;
+const STYLE_KR_LOAD_Z = 3;                            // 한반도 타일은 동아시아로 들어설 무렵 읽어 둔다
+const tileId = d => `${d.style}/${d.key}`;
+function addStyleTile(d){
+  if (!d || d.style !== mapStyle) return;              // 고르는 사이에 도착한 이전 종류는 버린다
+  if (FINE.some(t => t.id === tileId(d))) return;      // 같은 타일을 두 번 얹지 않는다
+  // lazy 를 끈다 — 여기까지 왔다는 것은 그 범위로 들어가는 중이라는 뜻이다. 배율 문지기에
+  // 디코드까지 맡기면 늦는다(위 주석).
+  FINE.push(loadTex(d.src, { bbox: d.bbox, feather: d.feather ?? DETAIL_PAD, id: tileId(d),
+                             key: d.key, style: d.style, natW: d.w, tier: 'style',
+                             sat: (MAPSTYLE_BY[d.style] || {}).sat ?? 0 }, false));
+  FINE.sort(fineOrder);
+  // 권역 하나가 ImageData 로 약 43 MB 다. 여섯 곳을 다 돌면 260 MB 라 발표용 노트북에서
+  // 위험하다 — 새로 얹을 때 다른 권역의 화소를 놓는다(자산 자체는 이미 읽혔으므로 다시
+  // 필요해지면 prime 한 번으로 돌아온다). kr 범위는 늘 쓰이므로 놓지 않는다.
+  for (const t of FINE)
+    if (t.tier === 'style' && t.key !== 'kr' && t.id !== tileId(d) && t.data){ t.data = null; t.primed = false; }
+  eSig = '';                                           // 타일이 늘었으니 텍스처 캐시를 버린다
+}
+// ── 도시 상세지도 — 서울 확대(2026-09-08) ────────────────────────────────────
+// detail_seoul.js — 같은 terrain-light 를 원천 해상도 15 m/px 로 구운 것(build_detailmap.py CITY). 강남 5 m/px ·
+// 테헤란로 1.5 m/px 단도 만들어 봤으나 원천이 15~20 m/px 아래에서 같은 그림을 늘려 줄 뿐이라 걷어냈다.
+// 그 배율에 지형·토지피복·위성 자산이 따로 없으므로 **배경 종류와 무관하게** 얹는 `city` 계층이다 —
+// setMapStyle 이 걷지 않고, 권역 상세지도의 방출 고리("다른 권역의 화소는 놓는다")에도 들지 않는다.
+// 방출 고리에 넣으면 서울에 들어설 때 수도권 상세지도가 놓여 타일 밖이 ASTER 260 m/px 로 떨어진다.
+// 탈색 면제는 상세지도와 같은 `dw` 다(renderEarth). 디코드하면 RGBA 약 28 MB.
+const CITY = [
+  { key: 'seoul', lon: 126.98, lat: 37.57, half: [0.35, 0.25] },   // 청하는 상자(넉넉히) — 자산 bbox 가 아니다
+];
+const CITY_Z = { seoul: [220, 520] };                              // 배어 나오는 배율 구간
+function addCityTile(d){
+  const id = `city/${d.key}`;
+  if (FINE.some(t => t.id === id)) return;
+  FINE.push(loadTex(d.src, { bbox: d.bbox, feather: d.feather ?? 0.01, id, key: d.key,
+                             natW: d.w, tier: 'city' }, false));
+  FINE.sort(fineOrder);
+  eSig = '';
+}
+// ── 지형(당초 배경)의 권역 상세지도 ──────────────────────────────────────────
+// terrain-light 1200 px/°. 컬러 배경지도와 달리 **탈색을 걷어서**(dw) 쓴다 — 이미 밝은 종이
+// 지도라 더 뺄 것이 없고, 그대로 걸면 한강 청색과 도로 회색까지 한 회색으로 뭉갠다.
+function addDetailTile(d){
+  if (d && d.city) return addCityTile(d);               // 도시 상세지도는 종류와 무관하다(위)
+  if (!d || !MAPSTYLE_BY[mapStyle].legacy) return;      // 고르는 사이에 도착했으면 버린다
+  const id = `detail/${d.key}`;
+  if (FINE.some(t => t.id === id)) return;              // 같은 권역을 두 번 얹지 않는다
+  FINE.push(loadTex(d.src, { bbox: d.bbox, feather: d.feather ?? DETAIL_PAD, id,
+                             key: d.key, natW: d.w, tier: 'detail' }, false));
+  FINE.sort(fineOrder);
+  for (const t of FINE)                                 // 다른 권역의 화소는 놓는다(메모리)
+    if (t.tier === 'detail' && t.id !== id && t.data){ t.data = null; t.primed = false; }
+  eSig = '';
+}
+function askAsset(src, id, apply){
+  // ⚠ `?field=0`·`?assets=min` 은 표지 장식용이라 정밀 배경을 아예 읽지 않는다(자산 주입부 주석).
+  //   배경지도도 같은 규약을 따라야 한다 — 안 그러면 덱 ①장이 쓰지도 않을 2.4 MB 를 내려받는다.
+  if (!FIELD_ON || Q.get('assets') === 'min') return;
+  if (detailAsked.has(id)) return;
+  detailAsked.add(id);
+  const s = document.createElement('script');
+  s.src = src; INFLIGHT++;
+  // 자산이 없으면(아직 안 구운 범위) 조용히 지금 그림 그대로 간다 — basemap 이 받쳐 준다.
+  s.onload = () => { INFLIGHT--; apply(); };
+  s.onerror = () => { INFLIGHT--; };
+  document.head.appendChild(s);
+}
+const askStyleAsset = (style, scope) =>
+  askAsset(`stylemap_${style}_${scope}.js`, `${style}/${scope}`,
+           () => (window.STYLEMAP || []).forEach(d => addStyleTile(d)));
+const askDetailAsset = key =>
+  askAsset(`detail_${key}.js`, `detail/${key}`,
+           () => (window.DETAILMAP || []).forEach(d => addDetailTile(d)));
+// 시선이 든 범위의 자산을 미리 청한다. 권역은 **가장 가까운 한 곳만** 고른다 — 권역 상자는 PAD
+// 만큼 겹쳐서 수도권 한가운데서도 충청·강원이 함께 걸리는데, 그러면 7 MB 를 부질없이 읽는다.
+function ensureDetail(){
+  const legacy = MAPSTYLE_BY[mapStyle].legacy;         // 지형 — 한반도 배율은 ASTER 흑백 그대로다
+  if (!legacy && CAM.z >= STYLE_KR_LOAD_Z) askStyleAsset(mapStyle, 'kr');
+  if (CAM.z < DETAIL_LOAD_Z) return;
+  // 도시 3범위 — 문지기 하한의 절반에서, 시선이 그 상자 안일 때 읽는다(보이기 전에). 종류와 무관하다.
+  for (const c of CITY)
+    if (CAM.z >= CITY_Z[c.key][0] * 0.5 && Math.abs(CAM.lon - c.lon) < c.half[0] && Math.abs(CAM.lat - c.lat) < c.half[1])
+      askDetailAsset(c.key);
+  let best = null, bestD = Infinity;
+  for (const r of REGIONS){
+    const dx = Math.abs(CAM.lon - r.lon) / (r.span[0] / 2 + DETAIL_PAD);
+    const dy = Math.abs(CAM.lat - r.lat) / (r.span[1] / 2 + DETAIL_PAD);
+    const d = Math.max(dx, dy);                        // 상자 안이면 1 이하
+    if (d <= 1 && d < bestD){ best = r; bestD = d; }
+  }
+  if (best) legacy ? askDetailAsset(best.key) : askStyleAsset(mapStyle, best.key);
+}
+// 배경지도 교체 — 이전 종류의 타일을 FINE 에서 걷고(화소까지 놓는다) 지금 배율에 필요한 것을 청한다.
+// 자산 스크립트는 한 번 읽으면 `window.STYLEMAP` 에 남으므로, 되돌아올 때는 내려받지 않고
+// 그 배열에서 다시 찾아 얹는다(detailAsked 가 재요청을 막는다).
+function setMapStyle(key){
+  if (!MAPSTYLE_BY[key] || key === mapStyle) return;
+  mapStyle = key;
+  for (let i = FINE.length - 1; i >= 0; i--)               // 컬러 타일도 상세지도도 모두 걷는다
+    if (FINE[i].tier === 'style' || FINE[i].tier === 'detail'){ FINE[i].data = null; FINE.splice(i, 1); }
+  (window.STYLEMAP || []).forEach(d => addStyleTile(d));   // 이미 읽어 둔 것이 있으면 곧바로 얹는다
+  (window.DETAILMAP || []).forEach(d => addDetailTile(d)); // 지형으로 돌아온 경우
+  ensureDetail();                                          // 없는 것만 새로 청한다
+  eSig = '';
+  syncUI();
+}
+const _c3 = [0, 0, 0];
+// equirect 텍스처 이중선형 샘플. 전지구 타일은 경도로 감고, 부분 타일은 가장자리로 고정한다.
+function sampleTex(t, lon, lat, out){
+  const bb = t.bbox, tw = t.w, th = t.h, td = t.data;
+  const wrap = (bb[2] - bb[0]) >= 359.9;
+  let u = (lon - bb[0]) / (bb[2] - bb[0]) * tw - 0.5;
+  let v = clamp((bb[3] - lat) / (bb[3] - bb[1]) * th - 0.5, 0, th - 1.001);
+  if (!wrap) u = clamp(u, 0, tw - 1.001);
+  const u0 = Math.floor(u), v0 = Math.floor(v), fu = u - u0, fv = v - v0;
+  const ua = wrap ? ((u0 % tw) + tw) % tw : u0, ub = wrap ? (ua + 1) % tw : ua + 1, vb = v0 + 1;
+  const i00 = (v0 * tw + ua) * 4, i01 = (v0 * tw + ub) * 4, i10 = (vb * tw + ua) * 4, i11 = (vb * tw + ub) * 4;
+  const w00 = (1 - fu) * (1 - fv), w01 = fu * (1 - fv), w10 = (1 - fu) * fv, w11 = fu * fv;
+  out[0] = td[i00] * w00 + td[i01] * w01 + td[i10] * w10 + td[i11] * w11;
+  out[1] = td[i00+1] * w00 + td[i01+1] * w01 + td[i10+1] * w10 + td[i11+1] * w11;
+  out[2] = td[i00+2] * w00 + td[i01+2] * w01 + td[i10+2] * w10 + td[i11+2] * w11;
+}
+// 타일 경계 페더 — 안쪽 1, 경계에서 0
+function tileW(t, lon, lat){
+  const bb = t.bbox, f = t.feather;
+  const dx = Math.min(lon - bb[0], bb[2] - lon), dy = Math.min(lat - bb[1], bb[3] - lat);
+  if (dx <= 0 || dy <= 0) return 0;
+  const a = clamp(dx / f, 0, 1) * clamp(dy / f, 0, 1);
+  return a * a * (3 - 2 * a);
+}
+// 타일별 '지금 쓸 만한가' 가중 — 화면 해상도가 타일 native 해상도에 가까워질 때만 올린다.
+// 배율로 일괄 판정하지 않는 이유는, 정밀 타일을 멀리서 끌어다 쓰면 점표본이라 계단이 심하게 튀기 때문이다.
+function updateTexZoomW(){
+  const scr = R * Math.PI / 180;                      // 화면 px per degree
+  for (const t of FINE){
+    // 아직 읽지 않은 타일은 크기를 모르므로 자산의 픽셀 수로 native 해상도를 미리 계산한다
+    const nat = (t.data ? t.w : (t.natW || 0)) / (t.bbox[2] - t.bbox[0]);
+    if (t.tier === 'city'){
+      // 도시 타일 — 그 배율에 다른 자산이 없으므로 해상도 문지기를 느슨히(0.05~0.15) 두고 배율 구간으로 연다.
+      const [a, b] = CITY_Z[t.key] || [220, 520];
+      t.zw = nat > 0 ? ss(0.05, 0.15, scr / nat) * ss(a, b, CAM.z) : 0;
+      continue;
+    }
+    t.zw = nat > 0 ? ss(0.10, 0.30, scr / nat) : 0;
+    // 권역 배경지도는 해상도만으로 고르면 z≈18 부터 배어 나와 한반도 전역 타일을 흐린다.
+    // 배율로 한 번 더 막는다 — z 60 에서 열리기 시작해 160 에서 온전히 덮는다. 권역 버튼
+    // (수도권 z≈78)에서는 9% 쯤 옅게 배어 나오고, 최대 배율(260)에서 시가지·산림이 또렷해진다.
+    if (t.tier === 'detail' || (t.tier === 'style' && t.key !== 'kr')) t.zw *= ss(60, 160, CAM.z);
+    // 한반도 전역 배경지도는 **탈색이 드는 것보다 먼저** 들어와야 한다(desat 무릎 16~25).
+    // 색이 빠지는 자리에 컬러 지도가 이미 깔려 있어야 전환이 '색이 빠진다'가 아니라
+    // '지도가 또렷해진다'로 읽힌다. 해상도 문지기만으로는 배율에 따라 늦을 수 있어 하한을 준다.
+    if (t.tier === 'style' && t.key === 'kr') t.zw = Math.max(t.zw, ss(8, 16, CAM.z));
+    if (t.zw > 0.02) t.prime();                       // 쓸 배율에 들어서면 그때 내려 읽는다
+  }
+}
+let DESAT = 0;                                         // 배경 탈색 정도 — 배율이 정한다(weights().desat)
+const SUN = (() => { const v = [0.60, -0.46, 0.66], m = Math.hypot(...v); return v.map(x => x / m); })();
+// ── 전지구 모습 음영 (2026-10-08 사용자 지시 — 한일 덱 20장 맺음 지구본의 지구를 1장 · 4장에도) ──────────────
+//  전지구 배율(LOOK = weights().rim, z 1.15~2.0 에서 1 → 0)에서만 쓴다. 그보다 깊이 들어가면 예전 음영 그대로다 —
+//  농도장 · 배경지도가 그 음영에 맞춰 조율돼 있다. 두 음영을 LOOK 으로 섞으므로 확대 중에 툭 바뀌지 않는다.
+//  육지 채도 ×1.3 · 초록 ×1.07 / 주광 0.36 + 0.82·램버트(좌상 앞) / 바다 반사광 / 가장자리 녹청 림.
+//  ⚠ 같은 식이 GPU 경로(EGL 셰이더)에도 있다 — 고치면 두 곳을 함께 고친다.
+let LOOK = 1;
+const LT = (() => { const v = [0.78, -0.45, 0.50], m = Math.hypot(...v); return v.map(x => x / m); })();   // 시선 좌표(앞 · 오른쪽 · 위)
+const LH = (() => { const v = [LT[0] + 1, LT[1], LT[2]], m = Math.hypot(...v); return v.map(x => x / m); })();
+function shadeEarth(cr, cg, cb, X, Y, Z, out){
+  // 예전 음영 — 낮의 지구라 그늘을 만들지 않는다. 태양쪽이 밝고 반대쪽은 살짝 가라앉는 정도 + 림 대기산란(옅은 청록)
+  const lam = Math.max(0, X * SUN[0] + Y * SUN[1] + Z * SUN[2]);
+  const sh = 0.74 + 0.42 * Math.pow(lam, 0.8);
+  const e = 1 - X, atm = clamp(e * e * e * 0.62, 0, 0.62);
+  let r = cr * sh * (1 - atm) + 176 * atm, g = cg * sh * (1 - atm) + 220 * atm, b = cb * sh * (1 - atm) + 240 * atm;
+  if (LOOK > 0.002){
+    const sea = ss(5.1, 30.6, cb - Math.max(cr, cg));          // 청색 우세 = 바다(0.02~0.12 × 255)
+    const L = 0.3 * cr + 0.59 * cg + 0.11 * cb;
+    const lr = L + (cr - L) * 1.3, lg = (L + (cg - L) * 1.3) * 1.07, lb = L + (cb - L) * 1.3;
+    const mr = lerp(lr, cr * 0.9, sea), mg = lerp(lg, cg, sea), mb = lerp(lb, cb * 1.05, sea);
+    const dif = Math.max(0, X * LT[0] + Y * LT[1] + Z * LT[2]), k = (0.36 + 0.82 * dif) * 1.04;
+    const sp = Math.pow(Math.max(0, X * LH[0] + Y * LH[1] + Z * LH[2]), 46) * sea * 127.5;
+    const fr = Math.pow(Math.max(0, e), 3.2) * 0.33 * 255;
+    r = lerp(r, mr * k + sp + 0.36 * fr, LOOK); g = lerp(g, mg * k + sp + 0.90 * fr, LOOK); b = lerp(b, mb * k + sp + 0.66 * fr, LOOK);
+  }
+  out[0] = r; out[1] = g; out[2] = b;
+}
+const eoff = document.createElement('canvas'), ectx = eoff.getContext('2d');
+let eSig = '';
+// 화면에 보이는 구 좌표 사각형 [u0,u1]×[v0,v1] — 구 반지름을 1 로 정규화한 화면 좌표(v 는 아래가 +).
+// 확대하면 구가 화면보다 커지므로 '보이는 만큼만' 그려야 한다 — 배율과 무관하게 비용이 일정해진다.
+let vr = [-1, 1, -1, 1];
+function visRect(){
+  const u0 = Math.max(-1, (0 - cx) / R), u1 = Math.min(1, (W - cx) / R);
+  const v0 = Math.max(-1, (0 - cy) / R), v1 = Math.min(1, (H - cy) / R);
+  vr = u1 <= u0 || v1 <= v0 ? null : [u0, u1, v0, v1];
+  return vr;
+}
+// 반환 — 보이는 사각형에 맞춘 오프스크린(구 밖은 알파 0). 시선이 거의 그대로면 직전 결과를 재사용한다.
+function renderEarth(dpr){
+  if (!TEX || !TEX.data || !vr) return null;            // 텍스처는 비동기로 들어온다 — 그 전에는 대체 원을 쓴다
+  // GPU 경로 — 정밀 타일도 탈색도 없는 배율(전지구~동아시아)이면 WebGL2 가 그린다. 못 그리면(null) 아래 CPU 경로
+  if (DESAT <= 0.002 && !FINE.some(t => t.data && t.zw > 0.004)){ const g = EGL.render(dpr); if (g) return g; }
+  window.GLOBE_GPU = false;
+  const [u0, u1, v0, v1] = vr;
+  // 해상도 상한 — 지금 쓰는 텍스처가 줄 수 있는 것보다 촘촘하게 그려도 선명해지지 않는다.
+  // 전지구 텍스처는 8.5 px/° 뿐이라, 확대해 놓고 화면 해상도로 그리면 13 배 과표본이다(31 fps 로 떨어졌다).
+  // 정밀 타일이 들어오면 natPpd 가 올라가 자동으로 다시 촘촘해진다.
+  const scr = R * Math.PI / 180;
+  let natPpd = TEX.w / (TEX.bbox[2] - TEX.bbox[0]);
+  for (const t of FINE) if (t.data && t.zw > 0.5) natPpd = Math.max(natPpd, t.w / (t.bbox[2] - t.bbox[0]));
+  // 화면 해상도의 62% 로 그리는 것이 기본이다(성능). 도시 배율(z 300~1500)에서는 100% 까지 올린다 —
+  // terrain-light 의 가는 도로선은 62% 에서 뭉개져 보였다(2 m/px 타일을 1:1 로 보는 최대 배율에서 실측).
+  const rf = lerp(0.62, 1.0, ss(300, 1500, CAM.z));
+  const ppd = Math.min(scr * clamp(dpr * rf, 0.5, 1.15), natPpd * 1.15);
+  const Nx = clamp(Math.round((u1 - u0) * R / scr * ppd), 48, 1500);
+  const Ny = clamp(Math.round((v1 - v0) * R / scr * ppd), 48, 1500);
+  // 시선을 화소 0.9 개에 해당하는 각도로 끊어 재렌더 횟수를 줄인다(배율이 커지면 눈금도 촘촘해진다).
+  // 그래프망은 매 프레임 매끄럽게 움직이고 텍스처만 두어 프레임에 한 번 따라잡는데, 어긋남이 1 px 안이라 눈에 걸리지 않는다.
+  const qd = 0.9 * 180 / (Math.PI * R);
+  const sig = [Nx, Ny, Math.round(view.lon / qd), Math.round(CAM.lat / qd),
+               Math.round(u0 * 2048), Math.round(v0 * 2048),
+               Math.round(DESAT * 24), Math.round(LOOK * 48),
+               FINE.map(t => (t.data ? 1 : 0) + '' + Math.round(t.zw * 20)).join('')].join('_');
+  if (sig === eSig) return eoff;
+  eSig = sig;
+  if (eoff.width !== Nx || eoff.height !== Ny){ eoff.width = Nx; eoff.height = Ny; }
+  const im = ectx.createImageData(Nx, Ny), o = im.data;
+  const ca = Math.cos(-view.lon * D), sa = Math.sin(-view.lon * D), ct = view.ct, st = view.st;
+  for (let j = 0; j < Ny; j++){
+    const py = v0 + (j + 0.5) / Ny * (v1 - v0);
+    for (let i = 0; i < Nx; i++){
+      const px = u0 + (i + 0.5) / Nx * (u1 - u0);
+      const r2 = px * px + py * py;
+      const q = (j * Nx + i) * 4;
+      if (r2 >= 1){ o[q + 3] = 0; continue; }
+      const X = Math.sqrt(1 - r2), Y = px, Z = -py;           // 시선 좌표(단위구 위)
+      // 시선 → 지구 고정 (기울기 역회전 → 경도 역회전)
+      const x1 = X * ct - Z * st, z1 = Z * ct + X * st, y1 = Y;
+      const x = x1 * ca + y1 * sa, y = -x1 * sa + y1 * ca, z = z1;
+      const lat = Math.asin(clamp(z, -1, 1)) / D;
+      const lon = Math.atan2(y, x) / D;
+      sampleTex(TEX, lon, lat, _c3);
+      let cr = _c3[0], cg = _c3[1], cb = _c3[2];
+      let dw = 0;                                     // 이 화소를 terrain-light 상세지도가 덮은 몫(탈색 면제)
+      let cw = 0;                                     // 이 화소에 남길 색차의 몫(컬러 배경지도가 덮은 만큼)
+      for (let k = 0; k < FINE.length; k++){          // 넓은 타일 → 좁은 타일 순으로 덮어쓴다
+        const ft = FINE[k]; if (!ft.data) continue;
+        const w = tileW(ft, lon, lat) * ft.zw; if (w <= 0.004) continue;
+        sampleTex(ft, lon, lat, _c3);
+        cr = lerp(cr, _c3[0], w); cg = lerp(cg, _c3[1], w); cb = lerp(cb, _c3[2], w);
+        if (ft.tier === 'detail' || ft.tier === 'city') dw = dw + (1 - dw) * w;   // 색을 덮는 것과 같은 셈법으로 쌓는다
+        if (ft.sat > 0) cw = cw + (1 - cw) * w * ft.sat;    // 같은 셈법 — 겹친 만큼만 색이 산다
+      }
+      // 배경 탈색 — 한반도·지역 배율에서는 농도장이 주인공이다. 컬러 지도 위에 반투명 농도장을 얹으면
+      // 초록·청색 지면이 색을 삼켜 농도가 읽히지 않는다(실측: 1km 층 알파 최대 0.39 인데 화면에서 거의 안 보였다).
+      // 그래서 명도만 남기고(ASTER 색음영의 휘도가 곧 힐쉐이드다) 감마로 밝은 종이 지도 쪽으로 들어 올린다.
+      // ⚠ 상세지도가 덮은 만큼은 탈색을 걷는다. terrain-light 는 이미 밝은 종이 지도라 탈색이
+      //   더할 것이 없고, 그대로 걸면 한강 청색과 도로 회색까지 한 회색으로 뭉개진다 —
+      //   이 자산을 굽는 이유가 그 물길과 도로망이다. 완전히 면제하지 않고 8% 를 남기는 것은
+      //   교차 구간에서 힐쉐이드 쪽과 색온도가 갈리지 않게 붙들어 두려는 것이다.
+      // ⚠ 2026-08-30 — 예전에는 여기서 색을 **완전히** 뺐다. 그래서 한반도 배율이 통째로 흑백이었고
+      //   도시·산림·교외가 한 회색으로 뭉갰다. 이제 명도는 그대로 종이톤으로 눕히되(농도장이 얹힐
+      //   자리를 비우는 몫은 그것이다) 컬러 배경지도가 덮은 만큼(cw) **색차만 되돌린다**.
+      //   cw = 0 이면 예전 식과 화소 단위로 같다 — ASTER 힐쉐이드만 있는 자리는 그대로 흑백이다.
+      const ds = DESAT * (1 - dw * 0.92);
+      if (ds > 0.002){
+        const L = 0.299 * cr + 0.587 * cg + 0.114 * cb;
+        // 감마 0.52 + 이득 0.62 + 바닥 0.36 — 바다 약 171, 육지 199~222 로 들어 올린다.
+        // 종이 지도만큼 밝게 두는 이유는 반투명 농도장이 얹힐 자리를 비우는 것이다. 탈색은 완전히 한다
+        // (채널별로 조금씩 남기면 올리브 색조가 남아 농도장의 호박색과 섞인다).
+        // 바다는 수심 음영을 지우고 평평한 밝은 톤으로 눕힌다 — 해상 농도장이 그 위에서 읽힌다.
+        // 판정은 '청색 우세'로 한다(녹색 보정 텍스처의 해양 램프는 강하게 청색이고, ASTER 육지는 아니다).
+        const water = cb > cr + 10 && cb > cg + 7;
+        const g = water ? 232 : 255 * (Math.pow(L / 255, 0.52) * 0.62 + 0.36);
+        // ⚠ **물에는 색을 되돌리지 않는다.** 바다를 평평한 밝은 톤으로 눕히는 것은 해상 농도장이
+        //   그 위에서 읽히게 하려는 것이다(바로 위 규약). 여기에 색차를 얹었더니 terrain 의 짙은
+        //   남색 바다가 되살아나, 한반도 타일이 놓인 자리가 **하늘색 직사각형**으로 드러났다
+        //   (페더 1.0° 로도 못 덮는 색 단차다). 물은 예전 그대로 두고 뭍에만 색을 남긴다.
+        const cwl = water ? 0 : cw;
+        // 목표색을 먼저 다 셈한다 — cr 을 먼저 덮으면 cg·cb 의 색차가 이미 어긋난 값에서 나온다.
+        const tr = g + (cr - L) * cwl;
+        const tg = g + (cg - L) * cwl + (water ? 2 : 0);
+        const tb = g + (cb - L) * cwl + (water ? 6 : 0);
+        cr = lerp(cr, tr, ds); cg = lerp(cg, tg, ds); cb = lerp(cb, tb, ds);
+      }
+      // 주광 음영 · 림 — 예전 음영과 전지구 모습을 LOOK 으로 섞는다(shadeEarth)
+      shadeEarth(cr, cg, cb, X, Y, Z, _c3); cr = _c3[0]; cg = _c3[1]; cb = _c3[2];
+      o[q] = cr > 255 ? 255 : cr; o[q+1] = cg > 255 ? 255 : cg; o[q+2] = cb > 255 ? 255 : cb;
+      o[q+3] = 255 * clamp((1 - r2) * Nx * 0.5, 0, 1);         // 실루엣 가장자리 한 겹 부드럽게
+    }
+  }
+  ectx.putImageData(im, 0, 0);
+  return eoff;
+}
+// ── 지구본 GPU 경로 (2026-10-08) ─────────────────────────────────────────────
+//  CPU 경로와 **같은 역투영**(시선 → 기울기 역회전 → 경도 역회전)을 조각 셰이더가 화소마다 한다 — 위에 얹는 그래프망 ·
+//  농도장 · 위성이 CPU 와 화소 단위로 같은 자리에 앉는다. 반환하는 것도 같은 규약(보이는 구 좌표 사각형의 캔버스)이라
+//  blitSphere 가 그대로 받는다. 다른 점은 둘 — 화면 해상도 그대로(CPU 는 62%) · 밉맵 샘플링(축소 때 계단 · 반짝임 없음).
+//  경도 ±180° 이음매에서 미분이 튀어 밉맵 단계가 한 줄 무너지므로 textureGrad 에 이음매를 접은 미분을 준다.
+//  WebGL2 가 없거나 문맥을 잃으면 null — renderEarth 가 CPU 로 그린다(인쇄 · 구형 환경도 같은 그림이 나온다).
+const EGL = (() => {
+  const cvs = document.createElement('canvas');
+  let gl = null, tried = false, tex = null, texData = null, loc = {}, dead = false, sig = '';
+  const VS = `#version 300 es
+in vec2 aP; uniform vec4 uRect; out vec2 vP;
+void main(){ vP = vec2(mix(uRect.x, uRect.y, aP.x * .5 + .5), mix(uRect.z, uRect.w, .5 - aP.y * .5)); gl_Position = vec4(aP, 0., 1.); }`;
+  const FS = `#version 300 es
+precision highp float;
+in vec2 vP; out vec4 o;
+uniform sampler2D uTex; uniform vec4 uRot; uniform float uLook, uNx; uniform vec3 uSun, uLt, uLh;
+void main(){
+  float r2 = dot(vP, vP), X = sqrt(max(0., 1. - r2)), Y = vP.x, Z = -vP.y;
+  float x1 = X * uRot.z - Z * uRot.w, z1 = Z * uRot.z + X * uRot.w, y1 = Y;
+  float x = x1 * uRot.x + y1 * uRot.y, y = -x1 * uRot.y + y1 * uRot.x;
+  vec2 uv = vec2(atan(y, x) / 6.2831853 + .5, .5 - asin(clamp(z1, -1., 1.)) / 3.1415927);
+  vec2 dx = dFdx(uv), dy = dFdy(uv); dx.x -= floor(dx.x + .5); dy.x -= floor(dy.x + .5);
+  vec3 c = textureGrad(uTex, uv, dx, dy).rgb;
+  // 예전 음영(CPU shadeEarth 와 같은 식)
+  float lam = max(0., dot(vec3(X, Y, Z), uSun)), sh = .74 + .42 * pow(lam, .8);
+  float e = 1. - X, atm = clamp(e * e * e * .62, 0., .62);
+  vec3 old = c * sh * (1. - atm) + vec3(176., 220., 240.) / 255. * atm;
+  // 전지구 모습
+  float sea = smoothstep(.02, .12, c.b - max(c.r, c.g)), L = dot(c, vec3(.3, .59, .11));
+  vec3 land = mix(vec3(L), c, 1.3); land.g *= 1.07;
+  vec3 m = mix(land, c * vec3(.9, 1., 1.05), sea);
+  float k = (.36 + .82 * max(0., dot(vec3(X, Y, Z), uLt))) * 1.04;
+  float sp = pow(max(0., dot(vec3(X, Y, Z), uLh)), 46.) * sea * .5;
+  vec3 nw = m * k + sp + vec3(.36, .9, .66) * pow(max(0., e), 3.2) * .33;
+  vec3 col = clamp(mix(old, nw, uLook), 0., 1.);
+  float a = r2 < 1. ? clamp((1. - r2) * uNx * .5, 0., 1.) : 0.;   // 실루엣 가장자리 한 겹 부드럽게(CPU 와 같다)
+  o = vec4(col * a, a);
+}`;
+  function init(){
+    tried = true;
+    try { gl = cvs.getContext('webgl2', { premultipliedAlpha: true, antialias: false, preserveDrawingBuffer: true, alpha: true }); } catch (e) { gl = null; }
+    if (!gl) return false;
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    let prog;
+    try {
+      prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+      gl.linkProgram(prog); if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    } catch (e) { console.warn('지구본 GPU 경로 끔:', e.message); gl = null; return false; }
+    gl.useProgram(prog);
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const ap = gl.getAttribLocation(prog, 'aP'); gl.enableVertexAttribArray(ap); gl.vertexAttribPointer(ap, 2, gl.FLOAT, false, 0, 0);
+    for (const n of ['uTex', 'uRect', 'uRot', 'uLook', 'uNx', 'uSun', 'uLt', 'uLh']) loc[n] = gl.getUniformLocation(prog, n);
+    gl.uniform3fv(loc.uSun, SUN); gl.uniform3fv(loc.uLt, LT); gl.uniform3fv(loc.uLh, LH); gl.uniform1i(loc.uTex, 0);
+    cvs.addEventListener('webglcontextlost', () => { dead = true; });
+    return true;
+  }
+  function upload(){
+    if (texData === TEX.data) return;
+    texData = TEX.data;
+    if (!tex) tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, TEX.w, TEX.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(texData.buffer, texData.byteOffset, texData.byteLength));
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const af = gl.getExtension('EXT_texture_filter_anisotropic');
+    if (af) gl.texParameterf(gl.TEXTURE_2D, af.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(af.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+    sig = '';
+  }
+  function render(dpr){
+    if (dead) return null;
+    const bb = TEX.bbox;
+    if (bb[2] - bb[0] < 359.9 || bb[3] - bb[1] < 179.9) return null;   // 전지구 텍스처가 아니면 CPU 로
+    if (!tried) init();
+    if (!gl || gl.isContextLost()) return null;
+    upload();
+    const [u0, u1, v0, v1] = vr;
+    const Nx = clamp(Math.round((u1 - u0) * R * dpr), 48, 2400), Ny = clamp(Math.round((v1 - v0) * R * dpr), 48, 2400);
+    const s = [Nx, Ny, view.lon.toFixed(3), view.ct.toFixed(5), view.st.toFixed(5), u0.toFixed(4), v0.toFixed(4), LOOK.toFixed(3)].join('_');
+    if (s === sig) return cvs;
+    sig = s;
+    if (cvs.width !== Nx || cvs.height !== Ny){ cvs.width = Nx; cvs.height = Ny; }
+    gl.viewport(0, 0, Nx, Ny);
+    gl.uniform4f(loc.uRect, u0, u1, v0, v1);
+    gl.uniform4f(loc.uRot, Math.cos(-view.lon * D), Math.sin(-view.lon * D), view.ct, view.st);
+    gl.uniform1f(loc.uLook, LOOK); gl.uniform1f(loc.uNx, Nx);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    window.GLOBE_GPU = true;                         // 점검 창구 — 이 프레임을 GPU 경로가 그렸다
+    return cvs;
+  }
+  return { render };
+})();
+// 두 농도장 층을 미리 겹칠 오프스크린
+const moff = document.createElement('canvas'), mctx = moff.getContext('2d');
+// 오프스크린을 화면의 제 자리에 얹는다 — 구 좌표 사각형이 곧 화면 사각형이다.
+function blitSphere(off){
+  if (!off || !vr) return;
+  ctx.drawImage(off, cx + vr[0] * R, cy + vr[2] * R, (vr[1] - vr[0]) * R, (vr[3] - vr[2]) * R);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  4. 캔버스 · 화면 좌표
+// ═══════════════════════════════════════════════════════════════════════════
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const scaleEl = document.getElementById('scalebar');
+const scaleLabel = document.getElementById('scaleLabel');
+const scaleRule = document.getElementById('scaleRule');
+// Rb·cxB·cyB 는 배율 1(지구본 전체)의 기준값이고, R·cx·cy 는 카메라가 매 프레임 정한다.
+// S(선폭·글자 배율)는 Rb 로 잡는다 — 확대해도 선과 활자가 함께 부풀면 안 된다.
+let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 0, S = 1, Rb = 0, cxB = 0, cyB = 0;
+let scaleSig = '';
+function updateScaleBar(){
+  if (!scaleEl || !scaleLabel || !scaleRule) return;
+  const show = CAM.z >= 1.5 && R > 0;
+  if (!show){
+    if (scaleSig !== 'off'){
+      scaleSig = 'off'; scaleEl.classList.remove('on'); scaleEl.setAttribute('aria-hidden', 'true');
+    }
+    return;
+  }
+  // 정사영 화면 중심에서 1 px가 나타내는 대권거리. 보기 좋은 1·2·5 계열 중 막대 폭 안의 최댓값을 쓴다.
+  const kmPerPx = 6371.0088 / R;
+  const maxPx = clamp(W * 0.11, 90, 160), limit = kmPerPx * maxPx;
+  const decade = Math.pow(10, Math.floor(Math.log10(limit)));
+  const ratio = limit / decade;
+  const distanceKm = (ratio >= 5 ? 5 : ratio >= 2 ? 2 : 1) * decade;
+  const width = distanceKm / kmPerPx;
+  const label = distanceKm >= 1 ? `${Number(distanceKm.toPrecision(8))} km` : `${Math.round(distanceKm * 1000)} m`;
+  const sig = `${label}_${Math.round(width * 2)}`;
+  if (sig === scaleSig) return;
+  scaleSig = sig;
+  scaleLabel.textContent = label;
+  scaleRule.style.width = `${width.toFixed(1)}px`;
+  scaleEl.setAttribute('aria-label', `지도 축척 ${label}`);
+  scaleEl.setAttribute('aria-hidden', 'false');
+  scaleEl.classList.add('on');
+}
+function resize(){
+  DPR = clamp(devicePixelRatio || 1, 1, DPR_MAX);
+  W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // 극궤도가 구 위아래로 rMul 배까지 뻗으므로 반지름을 그만큼 낮춰 잡는다 — 안 그러면 위성이 하단 범례를 침범한다.
+  // ⚠ 위성을 끄면(?sat=0) 그 여유가 필요 없다. SDG 궤도는 세로로 sin(24°)=0.41 배까지만 벌어져
+  //   구보다 세로로 넓어지지 않으므로, 패널 모드에서 세로 계수를 올려 지구를 키운다(0.355 → 0.44).
+  Rb = Math.min(W * (PANEL ? 0.34 : 0.30), H * (PANEL ? (SAT_ON ? 0.355 : 0.44) : 0.345));
+  cxB = PANEL ? W * (CXF > 0 ? CXF : 0.5) : W * 0.655;               // 독립 화면에서는 좌측 글 자리를 비운다
+  cyB = PANEL ? H * 0.5 : H * 0.45;
+  R = Rb * CAM.z; cx = cxB; cy = cyB;
+  S = Rb / 300;                                    // 선폭·글자 크기의 기준 배율
+  eSig = '';
+  scaleSig = '';
+  layoutCtl();
+}
+// 조작 패널은 하단 범례 바로 위에 붙인다. CSS 상수로 여백을 잡으면 화면 폭·활자 크기에 따라
+// 범례 높이가 달라져 침범하므로, 실제 높이를 재서 얹는다.
+function layoutCtl(){
+  const lg = document.querySelector('.legend'), c = document.getElementById('ctl');
+  if (!lg || !c) return;
+  const gap = Math.max(12, H * 0.022);
+  c.style.bottom = (lg.offsetHeight + parseFloat(getComputedStyle(lg).bottom || 0) + gap) + 'px';
+}
+addEventListener('resize', resize); resize();
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  5. 그리기
+// ═══════════════════════════════════════════════════════════════════════════
+const sx = v => cx + R * v[1], sy = v => cy - R * v[2];
+
+function drawHalo(a){                                 // 대기 — 흰 지면 위에서 사라지지 않게 청록을 조금 넣는다
+  ctx.save(); ctx.globalAlpha = a;
+  const g = ctx.createRadialGradient(cx, cy, R * 0.97, cx, cy, R * 1.20);
+  g.addColorStop(0.00, 'rgba(96,178,214,.30)');
+  g.addColorStop(0.35, 'rgba(120,196,220,.15)');
+  g.addColorStop(1.00, 'rgba(150,210,225,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.20, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+// 전지구 그래프망 + 정보 섬광. **그리기만 한다** — 파면 상태(WAVES · MESH.lit)는 stepWaves 가 진다.
+//   ① 바탕 망 — 레벨별 굵기로 한 번씩 긋는다(같은 규칙이 지구 전체에 똑같이 적용된 균질한 망).
+//   ② 파면 — 임의의 노드에서 시작한 섬광이 각거리를 따라 번지며 지나는 간선을 태운다.
+//   ③ 입자 — 간선을 건너뛰며 그래프를 도는 빛. 꼬리가 지나온 간선을 잠깐 밝힌다.
+function drawMesh(){
+  const NV = MESH.verts.length;
+  for (let i = 0; i < NV; i++) toView(MESH.verts[i], MESH.pos[i]);
+
+  // ① 바탕 망 — 레벨별로 모아 한 번에 긋는다. 간선은 2분할해 곡률을 살린다.
+  //  2026-10-02(3장 영상 개선 6번) — 정면에서 멀수록(림 쪽) 옅어지게 깊이 6칸으로 나눠 긋는다. 종전에는 림에
+  //  선이 겹겹이 몰려 대륙·농도장을 가렸고, 뒷면으로 넘어가는 간선이 림에서 툭 꺼졌다. 정면의 알파는 종전 그대로라
+  //  사막·설빙 위 하한(0.36)이 지켜진다. 최세분 두 레벨은 선폭을 15 % 줄여 큰 골격이 먼저 읽히게 했다.
+  ctx.lineCap = 'round';
+  const MBK = 6, mzf = z => 0.12 + 0.88 * clamp(z / 0.45, 0, 1) ** 1.5;
+  const mp = [];
+  for (let k = 0; k < MESH.edges.length; k++){
+    const e = MESH.edges[k], L = e[2];
+    const A = MESH.pos[e[0]], B = MESH.pos[e[1]];
+    if (A[0] <= 0.02 || B[0] <= 0.02) continue;                    // 뒷면 간선은 통째로 버린다(림에서는 이미 옅다)
+    const M = toView(MESH.emid[k], _p), b = Math.min(MBK - 1, (mzf((A[0] + B[0]) / 2) * MBK) | 0), q = L * MBK + b;
+    const p = mp[q] || (mp[q] = new Path2D());
+    p.moveTo(sx(A), sy(A)); p.lineTo(sx(M), sy(M)); p.lineTo(sx(B), sy(B));
+  }
+  for (let L = MESH_LEVEL; L >= 0; L--) for (let b = 0; b < MBK; b++){
+    const p = mp[L * MBK + b]; if (!p) continue;
+    ctx.lineWidth = LV_STYLE[L][0] * S * (L >= 2 ? 0.85 : 1);
+    ctx.strokeStyle = `rgba(255,255,255,${(LV_STYLE[L][1] * (b + 0.5) / MBK).toFixed(3)})`; ctx.stroke(p);
+  }
+
+  // ② 파면이 태우는 간선 — 양 끝 노드의 섬광 세기 평균으로 밝기를 정한다.
+  //    번짐은 lighter(어두운 해양 위에서 빛으로 번진다), 심은 source-over 로 얹는다 —
+  //    lighter 로만 그리면 이미 밝은 사막·설빙 위에서 흰 심이 지면에 먹혀 사라진다.
+  const flashRuns = [];
+  for (let k = 0; k < MESH.edges.length; k++){
+    const e = MESH.edges[k];
+    const f = (MESH.lit[e[0]] + MESH.lit[e[1]]) * 0.5; if (f < 0.25) continue;
+    const A = MESH.pos[e[0]], B = MESH.pos[e[1]]; if (A[0] <= 0.02 || B[0] <= 0.02) continue;
+    const M = toView(MESH.emid[k], _p);
+    flashRuns.push([sx(A), sy(A), sx(M), sy(M), sx(B), sy(B), f]);
+  }
+  const flashPath = () => { ctx.beginPath();
+    for (const r of flashRuns){ ctx.moveTo(r[0], r[1]); ctx.lineTo(r[2], r[3]); ctx.lineTo(r[4], r[5]); } };
+  if (flashRuns.length){
+    ctx.globalCompositeOperation = 'lighter';
+    flashPath(); ctx.lineWidth = 4.4 * S; ctx.strokeStyle = 'rgba(96,226,178,.26)'; ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    flashPath(); ctx.lineWidth = 1.7 * S; ctx.strokeStyle = 'rgba(124,255,196,.85)'; ctx.stroke();
+    flashPath(); ctx.lineWidth = 0.8 * S; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.stroke();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+
+  // ③ 입자 — 간선 위를 달리는 빛과 그 꼬리. 머리는 흰 심 + 민트 테두리라 바다·사막 어디서나 읽힌다.
+  if (!REDUCED) for (const r of RUNNERS){
+    const A = MESH.verts[r.a], B = MESH.verts[r.b];
+    for (let s = 3; s >= 0; s--){
+      const u = r.u - s * 0.14; if (u < 0) continue;
+      const p = toView([lerp(A[0],B[0],u), lerp(A[1],B[1],u), lerp(A[2],B[2],u)], _p);
+      if (p[0] <= 0.03) continue;
+      const a = (1 - s * 0.26) * clamp(p[0] * 2.4, 0, 1), X = sx(p), Y = sy(p);
+      ctx.fillStyle = `rgba(110,235,180,${(a * .75).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(X, Y, (3.4 - s * 0.6) * S, 0, TAU); ctx.fill();
+      if (!s){ ctx.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
+        ctx.beginPath(); ctx.arc(X, Y, 1.7 * S, 0, TAU); ctx.fill(); }
+    }
+  }
+
+  // 노드 — 파면이 지나는 순간에 살아나고, 농도가 높은 자리에서는 평소에도 굵고 밝다.
+  //   노드가 값을 물고 있다는 인상을 만드는 장치다(색은 밑에 깔린 농도장이 지므로 노드는 흰빛을 지킨다).
+  for (let i = 0; i < NV; i++){
+    const p = MESH.pos[i]; if (p[0] <= 0.05) continue;
+    const hit = MESH.lit[i], cc = MESH.conc[i];
+    const a = mzf(p[0]) * clamp(0.20 + 0.80 * hit + 0.34 * cc, 0, 1);   // 간선과 같은 깊이 감쇠(2026-10-02)
+    if (a < 0.04) continue;
+    ctx.fillStyle = hit > 0.25 ? `rgba(214,255,232,${a.toFixed(3)})` : `rgba(255,255,255,${a.toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(sx(p), sy(p), (0.85 + 2.0 * hit + 1.35 * cc) * S, 0, TAU); ctx.fill();
+  }
+}
+
+function drawKorea(t){                                 // 한반도 — 이 연구가 선 자리
+  const p = toView(ll2v(KOREA[0], KOREA[1]), _p); if (p[0] <= 0.08) return;
+  const X = sx(p), Y = sy(p), pu = REDUCED ? 0.5 : 0.5 + 0.5 * Math.sin(t * 1.7);
+  ctx.save();
+  ctx.strokeStyle = `rgba(255,255,255,${(0.45 * (1 - pu)).toFixed(3)})`; ctx.lineWidth = 1.4 * S;
+  ctx.beginPath(); ctx.arc(X, Y, (5 + 16 * pu) * S, 0, TAU); ctx.stroke();
+  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(X, Y, 4.2 * S, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#FD6925'; ctx.beginPath(); ctx.arc(X, Y, 2.2 * S, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  5-b. SDG 5 상징 궤도 (?sdg=1) — 덱 ①장 표지 장식
+//     레퍼런스 ../ppt-제55회한일기술사회발표/image/sdgs_asia_globe.jpg 의 '지구를 감는 SDG 색 띠 + 목표 타일' 구도다.
+//     ⚠ 궤도면은 **시선 좌표계에 고정**한다(TROPOMI 극궤도와 같은 방식). 지구는 그 아래에서
+//       좌우로 흔들리고(기본 진자) 상징만 궤도를 돈다 — 지구 고정계에 두면 상징이 뒤로 넘어가
+//       한참 사라져 '다섯 목표'가 한눈에 안 들어온다.
+//     ⚠ 앞면을 **아래쪽**에 둔다(B 의 위 성분을 음수로). 레퍼런스처럼 띠가 아래로 감겨 나오고
+//       위로 넘어가야 지구가 앞에 있는 것으로 읽힌다.
+//     ⚠ 세로 반지름이 가로의 sin(기울기)=0.41 배라 **띠는 구보다 세로로 넓어지지 않는다**.
+//       그래서 위성처럼 Rb 를 낮출 필요가 없다(가로만 1.235배 벌어진다).
+// ═══════════════════════════════════════════════════════════════════════════
+const SDG_TILT = 24 * D;                 // 궤도면 기울기 — 화면에서 납작한 타원이 된다
+const SDG_RMUL = 1.235;                  // 구 반지름의 배수
+const SDG_SPD  = 0.132;                  // 각속도(rad/s) — 한 바퀴 약 48초
+// 상징 — **공식 SDG 타일**이다. 원본은 한일 덱이 굽는다
+//   (../ppt-제55회한일기술사회발표/image/source/sdg*.png → 같은 덱 scripts/build_sdg_marks.py 가 축소).
+//   ⚠ 아래 image/ 의 다섯 장은 그 산출물의 **사본**이라 재생성 경로가 없다 — 다시 구우면 손으로 옮긴다.
+// 레퍼런스 sdgs_asia_globe.jpg 가 궤도에 태운 것도 이 '작은 타일'이라 구도가 그대로 맞는다.
+// c 는 그 타일의 배경색 — 궤도 띠를 이 색으로 이어 붙이므로 그림이 안 읽혀도 색으로는 이어진다.
+// ⚠ 타일이 아직 안 읽혔으면(ok=false) 색면만 그린다 — 첫 프레임부터 형태가 온전해야 한다(PPTX 빌드).
+const SDG_MARKS = [
+  { n: 3,  c: '#4C9F38' }, { n: 9,  c: '#FD6925' }, { n: 11, c: '#FD9D24' },
+  { n: 13, c: '#3F7E44' }, { n: 17, c: '#19486A' },
+];
+SDG_MARKS.forEach(m => {
+  m.img = new Image(); m.ok = false;
+  m.img.onload = () => { m.ok = true; };
+  if (SDG_ON) m.img.src = `image/sdg_tile_${m.n}.png`;   // 켠 장에서만 읽는다
+});
+
+// 궤도 띠 — 다섯 목표색을 이어 붙인 한 줄. half: +1 앞(아래) · -1 뒤(위)
+function drawSDGBand(a, half){
+  const rx = R * SDG_RMUL, ry = rx * Math.sin(SDG_TILT);
+  const t0 = half > 0 ? 0 : Math.PI;
+  ctx.save();
+  // 뒷반은 눌러 그려 앞뒤가 갈리게 한다. 다만 구 **밖으로 나온 부분**까지 흐려지므로 너무 낮추면
+  // 흰 지면에서 사라진다(0.42 는 실측에서 색이 빠져 회색으로 읽혔다).
+  ctx.globalAlpha = a * (half > 0 ? 0.95 : 0.62);
+  ctx.lineWidth = Math.max(2.4, R * 0.026); ctx.lineCap = 'butt';
+  for (let k = 0; k < 5; k++){
+    // 색 경계에서 이가 벌어지지 않게 조금씩 겹쳐 긋는다
+    const s = t0 + (k / 5) * Math.PI - 0.02, e = t0 + ((k + 1) / 5) * Math.PI + 0.02;
+    ctx.strokeStyle = SDG_MARKS[k].c;
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, s, e); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// 상징 다섯 — 같은 궤도 위 72° 간격
+function drawSDGMarks(t, a, half){
+  // ⚠ 도는 방향은 **음수**다(2026-08-16 지시로 뒤집었다). 앞면이 아래쪽이므로 음수 각속도면
+  //   상징이 화면에서 **오른쪽 → 아래 → 왼쪽**으로 흐른다. 지구 자전(서 → 동, 왼쪽에서 나타나
+  //   오른쪽으로)과 반대라 두 움직임이 서로 구분된다.
+  const rx = R * SDG_RMUL, ry = rx * Math.sin(SDG_TILT), base = -t * SDG_SPD;
+  for (let k = 0; k < 5; k++){
+    const th = base + k * TAU / 5, sn = Math.sin(th);
+    if ((half > 0) !== (sn > 0)) continue;                     // 이 반쪽이 아니면 건너뛴다
+    const m = SDG_MARKS[k];
+    // 깊이는 궤도면의 깊이 성분 — 앞으로 올수록 조금 커진다(위성과 같은 원근 규칙)
+    const depth = Math.cos(SDG_TILT) * sn;
+    const persp = CAM_D / (CAM_D - SDG_RMUL * depth);
+    const X = cx + rx * Math.cos(th), Y = cy + ry * sn;
+    // 공식 타일은 정사각이다 — 지름과 같은 변으로 두면 원판이던 시절과 자리·무게가 그대로다.
+    const s = R * 0.236 * persp, h2 = s / 2, r2 = s * 0.14;   // 모서리 반경 — 공식 타일은 각지지만
+    ctx.save();                                               // 작게 줄면 각이 튀어 아주 살짝 둥글린다
+    ctx.globalAlpha = a * (half > 0 ? 1 : 0.82);
+    ctx.beginPath(); ctx.roundRect(X - h2, Y - h2, s, s, r2);
+    ctx.fillStyle = m.c; ctx.fill();                          // 타일 배경색 — 이미지가 늦어도 색은 선다
+    if (m.ok){ ctx.save(); ctx.clip(); ctx.drawImage(m.img, X - h2, Y - h2, s, s); ctx.restore(); }
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = Math.max(1, s * 0.045); ctx.stroke();
+    ctx.restore();
+  }
+}
+function drawSDG(t, a, half){ drawSDGBand(a, half); drawSDGMarks(t, a, half); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  6. 위성 — GEMS(정지궤도) · TROPOMI/Sentinel-5P(극궤도)
+//     두 궤도의 성격 차이를 좌표계로 구분한다.
+//       · GEMS 는 지구 고정계에 놓는다. 동경 128.2° 적도 상공에 붙박여 지구와 함께 돈다.
+//       · TROPOMI 는 시선 좌표계에 놓는다. 궤도면이 관성계에 고정되어 지구가 그 아래로 자전해 지나간다.
+// ═══════════════════════════════════════════════════════════════════════════
+const satImg = { gems: new Image(), trop: new Image() };
+const satOk  = { gems: false, trop: false };
+satImg.gems.onload = () => { satOk.gems = true; };
+satImg.trop.onload = () => { satOk.trop = true; };
+// 도판은 이 모듈의 image/ 로 복사해 두고 그 사본을 쓴다(원본 자산 허브 ppt/graph_html_e2e/image/ 와 바이트 동일).
+// 파일명은 원본 그대로다 — sentinet5p 의 철자도 원본을 따라야 출처 대조가 단순하다.
+satImg.gems.src = 'image/gems.png';
+satImg.trop.src = 'image/sentinet5p.png';
+
+// 이름표는 평소 숨어 있다가 위성에 마우스가 닿으면 떠오른다 — 그림이 지구를 가리지 않게 한다.
+//   satHit  직전 프레임에 그린 아이콘 상자(마우스 판정용) · satLab 이름표 페이드 상태
+//   ?labels=always 면 항상 켠다(정지 화면 캡처·PPTX 빌드처럼 마우스가 없는 경로용) · =off 면 항상 끈다
+const LABELS = Q.get('labels') || 'hover';
+const satHit = { gems: null, trop: null }, satLab = { gems: 0, trop: 0 };
+const ptr = { x: -1e9, y: -1e9, on: false };
+function labTarget(key){
+  if (LABELS === 'always') return 1;
+  if (LABELS === 'off' || !ptr.on) return 0;
+  const b = satHit[key];
+  if (!b) return 0;
+  return Math.abs(ptr.x - b.X) < b.w * 0.52 && Math.abs(ptr.y - b.Y) < b.h * 0.62 ? 1 : 0;
+}
+
+// 극궤도면 위의 한 점 — p(θ) = A·cosθ + B·sinθ (시선 좌표계 [깊이, 우, 상])
+function polarPoint(th){
+  const cg = Math.cos(POLAR.gam), sg = Math.sin(POLAR.gam);
+  const cd = Math.cos(POLAR.del), sd = Math.sin(POLAR.del);
+  const c = Math.cos(th), s = Math.sin(th);
+  return [s * sd, c * cg - s * sg * cd, c * sg + s * cg * cd];
+}
+
+// 위성 그림 + 이름표. 지면이 밝으므로 01편의 검은 알약 대신 흰 알약에 목표색 테두리를 쓴다.
+//   persp — 깊이에 따른 크기 배율. 그림만 키우고 이름표 활자는 그대로 둔다.
+//   투사 화면에서 활자까지 같이 줄면 멀어질 때 읽히지 않는다 — 거리감은 그림이 지고 이름표는 정보를 진다.
+//   labA — 이름표 불투명도. 기본은 0 이고 위성 위에 마우스가 닿을 때만 올라온다(?labels=always 면 항상 1).
+function drawSat(key, img, ok, s, X, Y, a, persp, labA){
+  const w = clamp(s.w * R, 54, 190) * (persp || 1), h = ok ? w * (img.height / img.width) : w * 0.6;
+  satHit[key] = { X, Y, w, h };                        // 다음 프레임의 마우스 판정 상자
+  ctx.save(); const g0 = ctx.globalAlpha; ctx.globalAlpha = g0 * a;
+  // 우주 배경이 아니라 밝은 지면·바다 위에 얹히므로 옅은 후광을 깔아 실루엣을 띄운다
+  const gl = ctx.createRadialGradient(X, Y, 0, X, Y, w * 0.72);
+  gl.addColorStop(0, 'rgba(255,255,255,.55)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(X, Y, w * 0.72, 0, TAU); ctx.fill();
+  if (ok) ctx.drawImage(img, X - w / 2, Y - h / 2, w, h);
+  else { ctx.fillStyle = s.tint; ctx.beginPath(); ctx.roundRect(X - w * 0.3, Y - w * 0.18, w * 0.6, w * 0.36, 5); ctx.fill(); }
+  // 이름표
+  if (labA < 0.02){ ctx.restore(); return; }
+  ctx.globalAlpha = g0 * a * labA;
+  const f1 = clamp(13.5 * S, 11, 20), f2 = clamp(10.5 * S, 9.5, 15);
+  ctx.font = `700 ${f1.toFixed(1)}px 'Inter','Noto Sans KR',sans-serif`; const w1 = ctx.measureText(s.label).width;
+  ctx.font = `500 ${f2.toFixed(1)}px 'Inter','Noto Sans KR',sans-serif`; const w2 = ctx.measureText(s.orbit).width;
+  const bw = Math.max(w1, w2) + 18 * S, bh = (f1 + f2) * 1.65, bx = X - bw / 2, by = Y - h / 2 - bh - 7 * S;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 7 * S);
+  ctx.fillStyle = 'rgba(255,255,255,.94)'; ctx.fill();
+  ctx.lineWidth = 1.4 * S; ctx.strokeStyle = s.tint; ctx.stroke();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.font = `700 ${f1.toFixed(1)}px 'Inter','Noto Sans KR',sans-serif`; ctx.fillStyle = s.tint;
+  ctx.fillText(s.label, X, by + bh * 0.46);
+  ctx.font = `500 ${f2.toFixed(1)}px 'Inter','Noto Sans KR',sans-serif`; ctx.fillStyle = '#4b555e';
+  ctx.fillText(s.orbit, X, by + bh * 0.86);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.restore();
+}
+
+function drawSatellites(t, dt, wgt){
+  ctx.save(); ctx.globalAlpha = wgt;
+  for (const k of ['gems', 'trop'])                    // 이름표 페이드 — 0.12초쯤에 걸쳐 뜨고 진다
+    satLab[k] += (labTarget(k) - satLab[k]) * Math.min(1, dt * 12);
+  // ── TROPOMI — 관성계에 고정된 극궤도. 궤도선을 먼저 깔고 위성을 올린다.
+  const th = REDUCED ? 1.1 : t * POLAR.sp;
+  const rm = SAT.trop.rMul;
+  ctx.save();
+  ctx.setLineDash([6 * S, 7 * S]); ctx.lineWidth = 1.2 * S; ctx.strokeStyle = 'rgba(27,142,106,.42)';
+  ctx.beginPath(); let on = false;
+  for (let i = 0; i <= 200; i++){
+    const q = polarPoint(i / 200 * TAU);
+    const X = cx + R * rm * q[1], Y = cy - R * rm * q[2];
+    if (q[0] < 0 && Math.hypot(X - cx, Y - cy) < R){ on = false; continue; }   // 구 뒤 구간은 끊는다
+    if (on) ctx.lineTo(X, Y); else { ctx.moveTo(X, Y); on = true; }
+  }
+  ctx.stroke(); ctx.restore();
+  const q = polarPoint(th);
+  const tX = cx + R * rm * q[1], tY = cy - R * rm * q[2];
+  // 뒤로 넘어갈 때·다시 나올 때 **서서히** 지우고 띄운다(2026-08-20 사용자 지시).
+  // 예전에는 `q[0] < 0 && 화면반지름 < R` 하나로 끊어, 림을 지나는 한 프레임에 툭 사라졌다.
+  // 가림의 경계는 깊이(q[0]=0)가 아니라 **실루엣**이다 — 궤도 반지름이 1.16R 이므로 위성이
+  // 원반 안으로 들어오는 것은 1.16·√(1−q₀²) < 1, 곧 |q₀| > 0.507 일 때다. 그래서 GEMS 처럼
+  // 깊이로 재지 않고 **화면 반지름이 림(1.0)을 지나 안쪽으로 0.02 들어오는 동안** 걸쳐 지운다.
+  // ⚠ 폭은 좁게 잡아야 한다. 페이드가 도는 동안 위성은 원반 **위에** 반투명으로 얹히므로,
+  //   길면 '뒤로 넘어간다'가 아니라 '지구가 비쳐 보인다'가 된다. 궤도가 거의 옆으로 누워 있어
+  //   (gam 1.42) 림 근처에서 반지름이 천천히 변하는 탓에 폭이 곧 시간으로 크게 늘어난다 —
+  //   실측(궤도주기 52.4초): 0.05 → 2.34초 · **0.02 → 0.75초** · 0.01 → 0.36초. 0.02 를 쓴다.
+  const tRad = Math.hypot(tX - cx, tY - cy) / R;       // 실루엣 반지름의 몇 배인가
+  const tFade = q[0] >= 0 ? 1 : ss(0.98, 1, tRad);     // 앞면이면 온전히, 뒷면이면 림에서 페이드
+  if (tFade <= 0.02) satHit.trop = null;               // 가려진 위성에 이름표가 뜨지 않게 판정 상자를 지운다
+  if (tFade > 0.02){
+    // 관측 폭 — 위성에서 지구 표면으로 내려가는 옅은 부채
+    if (q[0] > -0.2){
+      const dx = cx - tX, dy = cy - tY, dl = Math.hypot(dx, dy) || 1, ux = dx / dl, uy = dy / dl;
+      const px = -uy, py = ux, half = R * 0.13, reach = Math.max(0, dl - R * 0.94);
+      const g2 = ctx.createLinearGradient(tX, tY, tX + ux * reach, tY + uy * reach);
+      // 관측 폭도 위성과 함께 사라져야 한다 — 부채만 남으면 가려진 위성이 아직 있는 것처럼 보인다
+      g2.addColorStop(0, `rgba(27,142,106,${(0.30 * tFade).toFixed(3)})`);
+      g2.addColorStop(1, 'rgba(27,142,106,0)');
+      ctx.fillStyle = g2; ctx.beginPath(); ctx.moveTo(tX, tY);
+      ctx.lineTo(tX + ux * reach + px * half, tY + uy * reach + py * half);
+      ctx.lineTo(tX + ux * reach - px * half, tY + uy * reach - py * half);
+      ctx.closePath(); ctx.fill();
+    }
+    drawSat('trop', satImg.trop, satOk.trop, SAT.trop, tX, tY, tFade, CAM_D / (CAM_D - rm * q[0]), satLab.trop);
+  }
+
+  // ── GEMS — 지구 고정계. 한반도 상공에 붙박여 지구와 함께 돌고, 뒤로 넘어가면 가려진다.
+  const gv = toView(ll2v(GEMS_LON, 0), _p);
+  const gX = cx + R * SAT.gems.rMul * gv[1], gY = cy - R * (SAT.gems.rMul * gv[2] + SAT.gems.lift);
+  // 고도를 화면용으로 압축했으므로(실제 6.6 R⊕) 뒷면으로 넘어가면 림 밖에 남아 떠 있게 된다.
+  // 실제라면 지구 너머로 보이는 게 맞지만 그림에서는 '한반도 상공'이라는 관계가 끊겨 보인다 — 림에서 지운다.
+  const gFade = clamp((gv[0] + 0.12) * 3.2, 0, 1);
+  if (gFade <= 0.02) satHit.gems = null;
+  if (gFade > 0.02){
+    const kp = toView(ll2v(KOREA[0], KOREA[1]), [0,0,0]);
+    if (gv[0] > 0.05 && kp[0] > 0.05){                 // 응시선 — GEMS 가 한반도를 계속 바라본다
+      const kX = sx(kp), kY = sy(kp);
+      ctx.save();
+      // 그래프망 위를 지나므로 흰 받침을 한 겹 깔아야 선이 끊겨 보이지 않는다
+      ctx.lineWidth = 3.4 * S; ctx.strokeStyle = `rgba(255,255,255,${(0.34 * gFade).toFixed(3)})`;
+      ctx.beginPath(); ctx.moveTo(gX, gY); ctx.lineTo(kX, kY); ctx.stroke();
+      const g3 = ctx.createLinearGradient(gX, gY, kX, kY);
+      g3.addColorStop(0, `rgba(14,127,184,${(0.85 * gFade).toFixed(3)})`);
+      g3.addColorStop(1, `rgba(14,127,184,${(0.20 * gFade).toFixed(3)})`);
+      ctx.setLineDash([5 * S, 5 * S]); ctx.lineWidth = 1.5 * S; ctx.strokeStyle = g3;
+      ctx.beginPath(); ctx.moveTo(gX, gY); ctx.lineTo(kX, kY); ctx.stroke();
+      ctx.restore();
+    }
+    drawSat('gems', satImg.gems, satOk.gems, SAT.gems, gX, gY, gFade,
+            CAM_D / (CAM_D - SAT.gems.rMul * gv[0]), satLab.gems);
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  6.5 한반도 1km 추론 농도장 (kr_field.js) — AMR-HGN(test70 4-도메인)이 추론한 격자
+//      광역 농도장(FIELD)과 같은 부호화·같은 컬러바를 쓴다. 확대해 들어가면 같은 시각의
+//      같은 물질이 0.5° → 1km 로 갈아 끼워지는 것이라, 색의 의미가 바뀌지 않아야 한다.
+//      값은 정규 경위도 격자로 재표본해 두었다(원본은 TM 1km) — 샘플 경로를 광역과 하나로 묶기 위해서다.
+// ═══════════════════════════════════════════════════════════════════════════
+function makeKRF(ASSET){
+  if (!FIELD_ON || !ASSET) return null;
+  const M = ASSET.meta;
+  const nx = M.nx, ny = M.ny, nt = M.nframes, dl = M.dl, tiles = M.tiles, rpt = M.rowsPerTile;
+  const lonA = M.lon0, lonB = M.lon0 + (nx - 1) * dl;
+  const latB = M.lat0, latA = M.lat0 - (ny - 1) * dl;
+  const NC = nx * ny;
+  const raw = { pm25: null, no2: null, o3: null };
+  const cur = { pm25: new Float32Array(NC), no2: new Float32Array(NC), o3: new Float32Array(NC) };
+  const T0 = Date.parse(M.t0);
+  let ok = false, mask = null;
+  // 유효 셀 비트마스크(바이트당 LSB 먼저) — 육지·도메인 안쪽만 1
+  const b64 = s => { const bin = atob(s), u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+  const valid = c => (mask[c >> 3] >> (c & 7)) & 1;
+
+  // 6.9 MB 자산이라 처음부터 읽으면 전지구 화면의 첫 몇 초를 디코드가 먹는다 — 확대해 들어올 때 읽는다.
+  let primed = false;
+  function prime(){
+    if (primed) return; primed = true; INFLIGHT++;
+    img.src = ASSET.src;
+  }
+  const img = new Image();
+  img.onerror = () => { INFLIGHT--; };
+  img.onload = () => {
+    INFLIGHT--;
+    const oc = document.createElement('canvas'); oc.width = img.width; oc.height = img.height;
+    const c2 = oc.getContext('2d', { willReadFrequently: true });
+    c2.drawImage(img, 0, 0);
+    const d = c2.getImageData(0, 0, img.width, img.height).data;
+    for (const k of SP_KEYS) raw[k] = new Uint8Array(NC * nt);
+    for (let c = 0; c < NC; c++){                      // 타일 분할 해독 — 캔버스 높이 한계를 피한 배치다
+      const tl = Math.floor(c / rpt), row = c - tl * rpt, base = (row * img.width + tl * nt) * 4;
+      for (let f = 0; f < nt; f++){
+        const q = base + f * 4, o = c * nt + f;
+        raw.no2[o] = d[q]; raw.pm25[o] = d[q + 1]; raw.o3[o] = d[q + 2];
+      }
+    }
+    mask = b64(ASSET.mask);
+    ok = true;
+  };
+
+  // 유효 셀만 쓰는 이중선형 — 무효 셀은 가중에서 빼고, 넷 다 무효면 -1 을 돌려준다
+  function samp(arr, gx, gy){
+    const x0 = Math.floor(clamp(gx, 0, nx - 1.001)), y0 = Math.floor(clamp(gy, 0, ny - 1.001));
+    const fx = clamp(gx - x0, 0, 1), fy = clamp(gy - y0, 0, 1);
+    const a = y0 * nx + x0, b = a + 1, c = a + nx, d = c + 1;
+    const wa = (1 - fx) * (1 - fy), wb = fx * (1 - fy), wc = (1 - fx) * fy, wd = fx * fy;
+    let s = 0, ws = 0;                                 // 무효 셀은 가중에서 뺀다(해안에서 바다 값이 새지 않게)
+    if ((mask[a >> 3] >> (a & 7)) & 1){ s += arr[a] * wa; ws += wa; }
+    if ((mask[b >> 3] >> (b & 7)) & 1){ s += arr[b] * wb; ws += wb; }
+    if ((mask[c >> 3] >> (c & 7)) & 1){ s += arr[c] * wc; ws += wc; }
+    if ((mask[d >> 3] >> (d & 7)) & 1){ s += arr[d] * wd; ws += wd; }
+    return ws > 0.25 ? s / ws : -1;
+  }
+  // 이 화소가 1km 자료 안쪽인지(0~1). 경계 0.25° 를 페더로 녹여 광역 농도장과 이어 붙인다.
+  function cover(lon, lat){
+    if (lon < lonA || lon > lonB || lat < latA || lat > latB) return 0;
+    const f = 0.25;
+    const a = clamp(Math.min(lon - lonA, lonB - lon) / f, 0, 1) * clamp(Math.min(lat - latA, latB - lat) / f, 0, 1);
+    return a * a * (3 - 2 * a);
+  }
+  // 광역 농도장과 같은 재생 시각을 쓴다 — 두 층이 같은 시계를 봐야 확대가 '같은 순간의 확대'가 된다
+  // 셀이 22만 개라 매 프레임 3물질을 다 보간하면 그것만으로 프레임을 먹는다.
+  // 보이는 물질만, 그리고 재생 시각 0.1시간(30 Hz 남짓) 눈금마다만 다시 푼다 — 장은 그보다 느리게 변한다.
+  let sSig = '';
+  function step(hour, mix){
+    if (!ok) return;
+    const p = hour / (M.dtHours || 1);                 // 공유 시계는 '시간' 단위다 — 자산 간격으로 나눠 쓴다
+    const vis = mix.map(w => w > 0.002 ? 1 : 0).join('');
+    const sig = Math.round(p * 10) + '_' + vis;
+    if (sig === sSig) return;
+    sSig = sig;
+    const f0 = clamp(Math.floor(p), 0, nt - 1), f1 = Math.min(f0 + 1, nt - 1), fr = clamp(p - f0, 0, 1);
+    for (let si = 0; si < SP_KEYS.length; si++){
+      if (!mix[si] || mix[si] <= 0.002) continue;
+      const A = raw[SP_KEYS[si]], C = cur[SP_KEYS[si]];
+      for (let c = 0; c < NC; c++){ const b = c * nt; C[c] = A[b + f0] * (1 - fr) + A[b + f1] * fr; }
+    }
+  }
+  // 1km 층 — 광역과 같은 오프스크린 규약(보이는 구 좌표 사각형). 해상도는 화면과 같게 잡는다.
+  const koff = document.createElement('canvas'), kctx = koff.getContext('2d');
+  let lSig = '';
+  function layer(dpr, kmW, LUT, mix){
+    if (!ok || !vr || kmW <= 0.002) return null;
+    const [u0, u1, v0, v1] = vr;
+    // 해상도 상한 — 자료 한 칸에 1.1 px, 그리고 화면의 0.45 배까지. 부드러운 장이라 확대 보간으로 메워도 된다.
+    const scr = R * Math.PI / 180, ppd = Math.min(scr * clamp(dpr * 0.45, 0.38, 0.8), 1.1 / dl);
+    const Nx = clamp(Math.round((u1 - u0) * R / scr * ppd), 40, 1100);
+    const Ny = clamp(Math.round((v1 - v0) * R / scr * ppd), 40, 1100);
+    // 카메라·시각·물질이 그대로면 다시 칠하지 않는다(전체 화면 화소 루프라 이 캐시가 프레임을 살린다)
+    const qd = 0.9 * 180 / (Math.PI * R);
+    const sig = [Nx, Ny, Math.round(view.lon / qd), Math.round(CAM.lat / qd), Math.round(u0 * 2048),
+                 Math.round(v0 * 2048), sSig, Math.round(kmW * 40), mix.map(w => Math.round(w * 20)).join(''),
+                 WIPE ? Math.round(WIPE.r * 60) : -1].join('_');   // 와이프 중에는 반경이 자랄 때마다 다시 칠한다
+    if (sig === lSig) return koff;
+    lSig = sig;
+    if (koff.width !== Nx || koff.height !== Ny){ koff.width = Nx; koff.height = Ny; }
+    const im = kctx.createImageData(Nx, Ny), o = im.data;
+    const ca = Math.cos(-view.lon * D), sa = Math.sin(-view.lon * D), ct = view.ct, st = view.st;
+    const L3 = [LUT.pm25, LUT.no2, LUT.o3], C3 = [cur.pm25, cur.no2, cur.o3];
+    for (let j = 0; j < Ny; j++){
+      const py = v0 + (j + 0.5) / Ny * (v1 - v0);
+      for (let i = 0; i < Nx; i++){
+        const px = u0 + (i + 0.5) / Nx * (u1 - u0);
+        const r2 = px * px + py * py, q = (j * Nx + i) * 4;
+        if (r2 >= 1){ o[q + 3] = 0; continue; }
+        const X = Math.sqrt(1 - r2), Y = px, Z = -py;
+        const x1 = X * ct - Z * st, z1 = Z * ct + X * st;
+        const x = x1 * ca + Y * sa, y = -x1 * sa + Y * ca;
+        const lat = Math.asin(clamp(z1, -1, 1)) / D, lon = Math.atan2(y, x) / D;
+        const cv2 = cover(lon, lat); if (cv2 <= 0.002){ o[q + 3] = 0; continue; }
+        const gx = (lon - lonA) / dl, gy = (latB - lat) / dl;
+        let pr = 0, pg = 0, pb = 0, pa = 0, hit = false;
+        for (let s = 0; s < 3; s++){
+          const w = mix[s]; if (w <= 0.002) continue;
+          const val = samp(C3[s], gx, gy); if (val < 0) continue;
+          hit = true;
+          const L = L3[s], k = (Math.round(val) | 0) * 4, a = L[k + 3] * w;
+          pr += L[k] * a; pg += L[k + 1] * a; pb += L[k + 2] * a; pa += a;
+        }
+        if (!hit || pa < 1e-4){ o[q + 3] = 0; continue; }
+        o[q] = pr / pa; o[q + 1] = pg / pa; o[q + 2] = pb / pa;
+        o[q + 3] = 255 * clamp(pa * cv2 * kmW * kmMask(lon, lat), 0, 1);
+      }
+    }
+    kctx.putImageData(im, 0, 0);
+    return koff;
+  }
+  // 1km 칸 경계선(km1Grid, 2026-10-06) — 광역 blocks 의 경계선과 같은 흰 실선이다. 유효 셀(육지 · 도메인 안쪽)의
+  //  변에만 긋고, 같은 행·열에서 이어지는 변은 한 선분으로 묶는다(칸마다 긋지 않는다). 확대 배율에서는 화면에 드는
+  //  범위가 1~3° 라 곡률을 무시하고 선분 끝점만 투영한다. 칸이 3.5 px 아래면 긋지 않는다(화면이 선으로 덮인다).
+  const _g = [0, 0, 0];
+  function grid(a, kmW){
+    if (!ok || a < 0.01 || kmW < 0.01) return;
+    const cellPx = R * dl * D;
+    const ga = a * kmW * ss(3.5, 9, cellPx);
+    if (ga < 0.01) return;
+    const hDeg = (H * 0.5) / (R * D) * 1.15, wDeg = Math.max(cx, W - cx) / (R * D * Math.cos(CAM.lat * D)) * 1.15;   // 중심이 한쪽으로 치우치면(?cx=) 먼 쪽 끝까지
+    const i0 = Math.max(0, Math.floor((CAM.lon - wDeg - lonA) / dl)), i1 = Math.min(nx - 1, Math.ceil((CAM.lon + wDeg - lonA) / dl));
+    const j0 = Math.max(0, Math.floor((latB - (CAM.lat + hDeg)) / dl)), j1 = Math.min(ny - 1, Math.ceil((latB - (CAM.lat - hDeg)) / dl));
+    if (i1 <= i0 || j1 <= j0) return;
+    const ok2 = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && valid(j * nx + i);
+    const P = (lon, lat) => { toView(ll2v(lon, lat), _g); return _g[0] > 0 ? [cx + R * _g[1], cy - R * _g[2]] : null; };
+    const path = new Path2D();
+    const seg = (l0, t0, l1, t1) => { const p = P(l0, t0), q = P(l1, t1); if (p && q){ path.moveTo(p[0], p[1]); path.lineTo(q[0], q[1]); } };
+    for (let e = j0; e <= j1 + 1; e++){                // 가로 변 — 셀 행 e-1 과 e 사이
+      const lat = latB - (e - 0.5) * dl; let s0 = -1;
+      for (let i = i0; i <= i1 + 1; i++){
+        const on = i <= i1 && (ok2(i, e - 1) || ok2(i, e)) && kmMask(lonA + i * dl, lat) > 0.5;
+        if (on && s0 < 0) s0 = i;
+        else if (!on && s0 >= 0){ seg(lonA + (s0 - 0.5) * dl, lat, lonA + (i - 0.5) * dl, lat); s0 = -1; }
+      }
+    }
+    for (let e = i0; e <= i1 + 1; e++){                // 세로 변 — 셀 열 e-1 과 e 사이
+      const lon = lonA + (e - 0.5) * dl; let s0 = -1;
+      for (let j = j0; j <= j1 + 1; j++){
+        const on = j <= j1 && (ok2(e - 1, j) || ok2(e, j)) && kmMask(lon, latB - j * dl) > 0.5;
+        if (on && s0 < 0) s0 = j;
+        else if (!on && s0 >= 0){ seg(lon, latB - (s0 - 0.5) * dl, lon, latB - (j - 0.5) * dl); s0 = -1; }
+      }
+    }
+    ctx.save();
+    ctx.globalAlpha = ga * 0.6; ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = clamp(cellPx * 0.03, 0.6, 1.4);
+    ctx.stroke(path);
+    ctx.restore();
+  }
+  return { step, layer, grid, cover, prime, get ready(){ return ok; },
+           arch: M.arch || 'e2e', label: M.label || 'AMR-HGN', run: M.run || '', source: M.source };
+}
+// ═══════════════════════════════════════════════════════════════════════════
+//  6.8 사례(기간) · 아키텍처 레지스트리
+//      사례는 서로 다른 이야기를 하는 72시간 창이다. 세 층(광역·1km·측정망)이 사례마다 한 벌씩 있고
+//      같은 t0 를 공유한다 — 모듈은 자산 meta 의 t0 로 시계를 맞추므로 사례를 갈면 시계도 함께 간다.
+//      1km 자산은 각 6~9 MB 라 미리 읽지 않는다. 그 사례·그 아키텍처가 필요해지는 순간 스크립트를 주입한다.
+//      두 아키텍처(E2E test70 · Two-Stage test211+test304) 비교는 봄 창에서만 굽는다 — 비교는 한 사례로 충분하다.
+// ═══════════════════════════════════════════════════════════════════════════
+const CASES = [
+  { key: 'winter', label: '겨울 고농도', wide: 'AQ_FIELD_WINTER', sta: 'KR_STATIONS_WINTER',
+    km1: { e2e: ['kr_field_winter.js', 'KR_FIELD_WINTER'] } },
+  { key: 'spring', label: '봄 수송', wide: 'AQ_FIELD', sta: 'KR_STATIONS',
+    km1: { e2e: ['kr_field.js', 'KR_FIELD'], '2stage': ['kr_field_2stage.js', 'KR_FIELD_2STAGE'] } },
+  { key: 'ozone', label: '오존 고농도', wide: 'AQ_FIELD_OZONE', sta: 'KR_STATIONS_OZONE',
+    km1: { e2e: ['kr_field_ozone.js', 'KR_FIELD_OZONE'] } },
+  // 연간은 성격이 다른 '사례' 다 — 3일·2시간(수송·일주) 대신 364일·하루(계절)를 담는다. 세 층 모두
+  // KST 일평균이고 `meta.agg='daily-kst'` 라 범례가 시각 대신 날짜를 적는다. 재생 길이는 ?yspd= 로 잡는다.
+  // 사례 버튼의 한 칸으로 두면 '연간인데 사례가 봄' 같은 모순 상태가 아예 생기지 않는다.
+  { key: 'year', label: '연간 일평균', wide: 'AQ_FIELD_DAILY2023', sta: 'KR_STATIONS_DAILY2023',
+    km1: { e2e: ['kr_field_daily2023.js', 'KR_FIELD_DAILY2023'] } },
+];
+const CASE_BY = Object.fromEntries(CASES.map(c => [c.key, c]));
+// 자산은 `const AQ_FIELD = …` 형태다. 최상위 const 는 전역 객체의 속성이 아니라 전역 렉시컬 바인딩이라
+// window['AQ_FIELD'] 로는 찾을 수 없다(맨 이름으로 참조할 때만 보인다). 이름으로 찾아야 하니 간접 eval 을 쓴다.
+const byName = n => { try { return (0, eval)(`typeof ${n} !== 'undefined' ? ${n} : undefined`); } catch (e) { return undefined; } };
+// 자산이 실제로 있는 사례만 남긴다(빌드 전이거나 일부만 구웠을 때도 나머지가 그대로 돈다)
+const CASE_KEYS = CASES.filter(c => byName(c.wide)).map(c => c.key);
+let caseKey = CASE_KEYS.includes(CASE0) ? CASE0 : (CASE_KEYS.includes('spring') ? 'spring' : CASE_KEYS[0]);
+
+// 사례별 광역·측정망 인스턴스는 시작할 때 한 번 만든다(합 2.6 MB — 전환이 즉시 처리된다)
+const FIELDS = {}, STAS = {};
+for (const c of CASES){
+  const w = byName(c.wide), t = byName(c.sta);
+  if (w) FIELDS[c.key] = makeFIELD(w);
+  if (t) STAS[c.key] = makeSTA(t);
+}
+let FIELD = FIELDS[caseKey] || null, STA = STAS[caseKey] || null;
+
+// 1km — (사례, 아키텍처)별로 필요할 때 스크립트를 주입하고, 읽히면 그 자리에서 인스턴스를 만든다
+const krfCache = {}, krfLoading = {};
+function archKeys(){ return Object.keys((CASE_BY[caseKey] || {}).km1 || {}); }
+let arch = ARCH0;
+// 인자 k 는 **미리 읽어 둘 사례**다(기본값은 지금 사례). 영상 큐가 `warm:['winter','ozone']` 으로
+// 다음에 쓸 사례의 1km 자산을 앞당겨 읽는 데 쓴다 — 전환 순간에 9 MB 를 읽으면 그 자리가 빈다.
+function krfCur(k = caseKey){
+  const spec = ((CASE_BY[k] || {}).km1 || {})[arch];
+  if (!spec) return null;
+  const id = k + ':' + arch;
+  if (krfCache[id]) return krfCache[id];
+  const [file, varName] = spec;
+  const asset = byName(varName);
+  if (asset){                                         // 이미 읽혀 있으면 인스턴스만 만든다
+    krfCache[id] = makeKRF(asset);
+    krfCache[id]?.prime();
+    return krfCache[id];
+  }
+  if (!krfLoading[id]){                               // 아직 없으면 지금 주입한다(한 번만)
+    krfLoading[id] = true;
+    const el = document.createElement('script');
+    el.src = file; el.async = true; INFLIGHT++;
+    // 읽히는 즉시 인스턴스를 만들어 **해독까지** 마쳐 둔다. 주입만 해 두면 해독(약 1M 셀)이
+    // 그 사례로 갈아타는 순간으로 미뤄져, 미리 읽어 둔 보람이 없다.
+    el.onload = () => { INFLIGHT--; krfCur(k); };
+    el.onerror = () => { INFLIGHT--; console.warn('1km 자산을 읽지 못했다:', file); };
+    document.head.appendChild(el);
+  }
+  return null;                                        // 준비되기 전에는 광역 농도장이 화면을 지킨다
+}
+const KRF = { get cur(){ return krfCur(); } };
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  6.6 정적 1km 덧층 — 시계와 무관한 한 장짜리 지도(2026-10-17, EIA 덱 36장 셋째 단계).
+//      cue { ovl: 'o3hot' } 로 켜고 { ovl: null } 로 끈다. 켜지면 농도장 · 범례가 그만큼 물러나고 이 지도가 덮는다.
+//      자산 = 경위도 정규 격자 RGBA 두 장(img = 칠한 지도, hot = 깜빡일 칸) + 지명. 색은 자산이 구워 온 그대로다.
+//      값을 다시 풀지 않으므로 화소는 최근접으로 옮긴다 — 1km 칸 모양이 그대로 보여야 한다.
+// ═══════════════════════════════════════════════════════════════════════════
+const OVL_DEF = { o3hot: ['o3_hot_2023.js', 'O3_HOT_2023'] };   // 여름 O₃ 초과 일수(build_o3_hot_globe.py)
+let OVL_KEY = null, OVL = 0, OVL_T = 0;
+const ovlCache = {}, ovlLoading = {};
+function ovlGet(k){
+  if (!k || !OVL_DEF[k]) return null;
+  if (ovlCache[k]) return ovlCache[k];
+  const [file, name] = OVL_DEF[k], asset = byName(name);
+  if (asset) return (ovlCache[k] = makeOVL(asset));
+  if (!ovlLoading[k]){
+    ovlLoading[k] = true;
+    const el = document.createElement('script'); el.src = file; el.async = true; INFLIGHT++;
+    el.onload = () => { INFLIGHT--; ovlGet(k); }; el.onerror = () => { INFLIGHT--; console.warn('덧층 자산을 읽지 못했다:', file); };
+    document.head.appendChild(el);
+  }
+  return null;
+}
+function makeOVL(A){
+  const M = A.meta, nx = M.nx, ny = M.ny, dl = M.dl, lonA = M.lon0, latB = M.lat0;
+  const src = {}, offs = {}, sigs = {};
+  for (const key of ['img', 'hot']){
+    offs[key] = document.createElement('canvas'); sigs[key] = '';
+    const im = new Image(); INFLIGHT++;
+    im.onerror = () => { INFLIGHT--; };
+    im.onload = () => { INFLIGHT--; const c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+      const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0);
+      src[key] = g.getImageData(0, 0, im.width, im.height).data; };
+    im.src = A[key];
+  }
+  // 1km 층과 같은 오프스크린 규약(보이는 구 좌표 사각형). 카메라가 그대로면 다시 칠하지 않는다.
+  function layer(key, dpr){
+    const d = src[key]; if (!d || !vr) return null;
+    const [u0, u1, v0, v1] = vr;
+    const scr = R * Math.PI / 180, ppd = Math.min(scr * clamp(dpr * 0.6, 0.45, 1), 2 / dl);
+    const Nx = clamp(Math.round((u1 - u0) * R / scr * ppd), 40, 1400), Ny = clamp(Math.round((v1 - v0) * R / scr * ppd), 40, 1400);
+    const sig = [Nx, Ny, view.lon.toFixed(4), CAM.lat.toFixed(4), Math.round(u0 * 4096), Math.round(u1 * 4096), Math.round(v0 * 4096)].join('_');
+    const off = offs[key];
+    if (sig === sigs[key]) return off;
+    sigs[key] = sig;
+    if (off.width !== Nx || off.height !== Ny){ off.width = Nx; off.height = Ny; }
+    const g = off.getContext('2d'), im = g.createImageData(Nx, Ny), o = im.data;
+    const ca = Math.cos(-view.lon * D), sa = Math.sin(-view.lon * D), ct = view.ct, st = view.st;
+    for (let j = 0; j < Ny; j++){
+      const py = v0 + (j + 0.5) / Ny * (v1 - v0);
+      for (let i = 0; i < Nx; i++){
+        const px = u0 + (i + 0.5) / Nx * (u1 - u0), r2 = px * px + py * py;
+        if (r2 >= 1) continue;
+        const X = Math.sqrt(1 - r2), Y = px, Z = -py;
+        const x1 = X * ct - Z * st, z1 = Z * ct + X * st;
+        const x = x1 * ca + Y * sa, y = -x1 * sa + Y * ca;
+        const gx = Math.floor((Math.atan2(y, x) / D - lonA) / dl), gy = Math.floor((latB - Math.asin(clamp(z1, -1, 1)) / D) / dl);
+        if (gx < 0 || gy < 0 || gx >= nx || gy >= ny) continue;
+        const q = (j * Nx + i) * 4, s = (gy * nx + gx) * 4;
+        o[q] = d[s]; o[q + 1] = d[s + 1]; o[q + 2] = d[s + 2]; o[q + 3] = d[s + 3];
+      }
+    }
+    g.putImageData(im, 0, 0);
+    return off;
+  }
+  const _o = [0, 0, 0];
+  function labels(){                                   // 지명 — 점과 흰 테두리 글씨
+    const f = clamp(16 * S, 14, 24);
+    ctx.font = `800 ${f.toFixed(1)}px 'Inter','Noto Sans KR',sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.lineJoin = 'round';
+    for (const [lon, lat, t] of M.labels){
+      toView(ll2v(lon, lat), _o); if (_o[0] <= 0) continue;
+      const X = cx + R * _o[1], Y = cy - R * _o[2];
+      if (X < -50 || X > W + 50 || Y < -50 || Y > H + 50) continue;
+      ctx.fillStyle = '#111827'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.arc(X, Y, 4, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 4; ctx.strokeText(t, X, Y - 7); ctx.fillText(t, X, Y - 7);
+    }
+  }
+  return { layer, labels, meta: M, get ready(){ return !!(src.img && src.hot); } };
+}
+
+function setCase(k){
+  if (!CASE_KEYS.includes(k) || k === caseKey) return;
+  caseKey = k;
+  FIELD = FIELDS[k] || null; STA = STAS[k] || null;
+  // 사례마다 노출 상태(nodeRev)가 따로다 — 새 사례는 서쪽만 드러난 채로 들어온다. 파면을 다시 채워
+  // 그 사례를 처음부터 번지게 한다. 재무장하지 않으면 배정량이 이미 0 이라 122°E 동쪽(한반도)이
+  // 영구히 가려졌다 — 겨울 고농도 사례가 정작 한반도만 빈 화면으로 나왔던 원인이다.
+  armWaves();
+  if (!archKeys().includes(arch)) arch = archKeys()[0] || 'e2e';
+  tailCredit(); syncUI();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  6.6 대기오염측정망 (kr_stations.js) — 관측 지점과 그 시각의 관측값
+//      농도장과 같은 램프로 칠한 점이다. 모델 격자와 관측을 같은 색 규칙으로 두면
+//      '어디가 맞고 어디가 벌어지는지'를 눈으로 견줄 수 있다.
+// ═══════════════════════════════════════════════════════════════════════════
+// 종류별 도형 — 색은 이미 농도가 쓰고 있으므로 측정망 종류는 모양으로만 나눈다.
+//   같은 r 을 그대로 넘기면 삼각형이 원보다 한참 작아 보인다(외접원이 같아도 넓이는 41 %) —
+//   넓이를 원 πr² 에 맞춘 배수를 미리 넣어 두어 종류가 달라도 점의 무게가 같게 읽히게 한다.
+function staPath(g, t, X, Y, r){
+  g.beginPath();
+  switch (t){
+    case 1: { const a = 0.886 * r;                     // 도로변대기 — 정사각형 (4a² = πr²)
+      g.rect(X - a, Y - a, 2 * a, 2 * a); break; }
+    case 2: { const R = 1.556 * r;                     // 교외대기 — 위 삼각형 (1.299R² = πr²)
+      g.moveTo(X, Y - R); g.lineTo(X + 0.866 * R, Y + 0.5 * R); g.lineTo(X - 0.866 * R, Y + 0.5 * R);
+      g.closePath(); break; }
+    case 3: { const d = 1.253 * r;                     // 국가배경 — 마름모 (2d² = πr²)
+      g.moveTo(X, Y - d); g.lineTo(X + d, Y); g.lineTo(X, Y + d); g.lineTo(X - d, Y);
+      g.closePath(); break; }
+    case 4: { const R = 1.556 * r;                     // 항만 — 아래 삼각형
+      g.moveTo(X, Y + R); g.lineTo(X + 0.866 * R, Y - 0.5 * R); g.lineTo(X - 0.866 * R, Y - 0.5 * R);
+      g.closePath(); break; }
+    default: g.arc(X, Y, r, 0, TAU);                   // 도시대기 — 원(640 중 522, 기본형)
+  }
+}
+function makeSTA(ASSET){
+  if (!ASSET) return null;
+  const M = ASSET.meta, n = M.n ?? ASSET.sta.length, nt = M.nframes;
+  const b64 = s => { const bin = atob(s), u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+  const raw = {}; for (const k of SP_KEYS) if (ASSET.val[k]) raw[k] = b64(ASSET.val[k]);
+  const pos = ASSET.sta.map(s => ll2v(s[0], s[1]));
+  const typ = ASSET.sta.map(s => s[2] | 0);          // 측정망 종류 — meta.types 인덱스
+  // 640 중 522 가 도시대기라 자료 순서대로 그리면 소수 종류가 그 아래 깔린다 — 도시대기를 먼저 깐다.
+  const order = pos.map((_, i) => i).sort((a, b) => (typ[a] ? 1 : 0) - (typ[b] ? 1 : 0));
+  const cur = {}; for (const k of SP_KEYS) cur[k] = new Float32Array(n);
+  const DT = M.dtHours || 1;                         // 창 사례는 1 h · 연간 일평균 사례는 24 h
+  // 0 은 결측이고 1..255 가 농도다 — 광역·1km 자산과 같은 cmax·gamma 를 쓰되 0 을 예약했다.
+  function step(hour){
+    const f = clamp(Math.round(hour / DT), 0, nt - 1);   // 공유 시계는 시간 단위다(1km 층과 같은 규약)
+    for (const k of SP_KEYS){
+      const A = raw[k], C = cur[k]; if (!A) continue;
+      for (let i = 0; i < n; i++){ const v = A[i * nt + f]; C[i] = v === 0 ? -1 : (v - 1) / 254 * 255; }
+    }
+  }
+  function draw(w, LUT, mix){
+    if (w <= 0.01) return;
+    const dk = SP_KEYS[mix.indexOf(Math.max(mix[0], mix[1], mix[2]))];
+    const L = LUT[dk], C = cur[dk]; if (!C) return;
+    // 점은 관측이다 — 농도장과 같은 램프로 칠하되 테두리는 먹색으로 둔다.
+    //   흰 테두리 + 불투명 채움으로 두면(초기 구현) 저농도 지점이 밝은 노란 점으로 튀어 농도장을 가린다.
+    //  2026-10-02(3장 영상 개선 8번) — 약 1.5배 키우고 흰 바깥 테를 한 겹 둘렀다. 같은 램프로 칠한 점이 비슷한 색의
+    //  1km 장 위에 앉으면 먹색 테만으로는 묻혀 "관측은 이 점들뿐" 이라는 대비가 약했다. 바깥 테는 흰빛, 안쪽은 종전 먹색 테다.
+    const r = clamp(3.9 * S * (0.85 + 0.55 * ss(9, 70, CAM.z)), 3.2, 9);
+    const lw = Math.max(0.9, 1.05 * S);
+    ctx.save(); ctx.globalAlpha = w;
+    for (const i of order){
+      const v = C[i]; if (v < 0) continue;             // 결측 지점은 그리지 않는다
+      const p = toView(pos[i], _p); if (p[0] <= 0.02) continue;
+      const X = sx(p), Y = sy(p);
+      if (X < -20 || Y < -20 || X > W + 20 || Y > H + 20) continue;
+      const k = (Math.round(clamp(v, 0, 255)) | 0) * 4;
+      staPath(ctx, typ[i], X, Y, r);
+      ctx.lineWidth = lw + 2.2; ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.stroke();
+      ctx.fillStyle = `rgba(${L[k] | 0},${L[k + 1] | 0},${L[k + 2] | 0},${(0.55 + 0.45 * L[k + 3]).toFixed(3)})`;
+      ctx.fill();
+      ctx.lineWidth = lw; ctx.strokeStyle = 'rgba(17,21,26,.62)'; ctx.stroke();
+    }
+    ctx.restore();
+  }
+  return { step, draw, n, types: M.types || [] };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  6.7 경계선 (boundaries.js) — 확대 단계의 지리 좌표계를 사람에게 돌려주는 층
+//      래스터 배경만으로는 시·도가 어디서 갈리는지 알 수 없다. 시도 경계는 지역 확대의 단위이기도 하다.
+// ═══════════════════════════════════════════════════════════════════════════
+const BND = (() => {
+  if (typeof BOUNDARIES === 'undefined') return null;
+  const conv = arr => (arr || []).map(a => {
+    const v = new Array(a.length / 2);                 // [lon,lat,...] → 단위벡터 배열(프레임마다 재계산 안 하게)
+    for (let i = 0; i < a.length; i += 2) v[i / 2] = ll2v(a[i], a[i + 1]);
+    return v;
+  });
+  const L = { coastKR: conv(BOUNDARIES.coastKR), sido: conv(BOUNDARIES.sido),
+              sigungu: conv(BOUNDARIES.sigungu), coastEA: conv(BOUNDARIES.coastEA) };
+  // 정점이 5만 개라 그냥 한 경로에 다 넣으면(초기 구현) 소프트웨어 래스터에서 프레임이 19 fps 로 주저앉는다.
+  //   ① 뒷면은 끊고 ② 화면 밖은 버리되 걸치는 구간은 한 점 넘겨 이어 주고
+  //   ③ 화면에서 1.2 px 도 안 떨어진 이웃 정점은 건너뛴다 — 경계 자료는 200 m 간격이라
+  //      한반도 배율에서 화소보다 촘촘하다(그려도 보이지 않는 정점을 버리는 것이다).
+  let g = ctx;                                         // 그릴 대상 — 캐시를 쓸 때만 오프스크린으로 바꾼다
+  function strokeSet(set, w, width, color){
+    if (!set.length || w <= 0.01) return;
+    const m = 48, minD2 = 1.44;
+    g.save(); g.globalAlpha = w; g.lineWidth = width; g.strokeStyle = color;
+    // 한 층이 여러 조각(삼중점에서 갈린다)이라 이음새를 둥글게 둔다 — 굵게 그릴 때 조각 경계가 파이지 않는다
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.beginPath();
+    for (const line of set){
+      let on = false, lx = 0, ly = 0, pvX = 0, pvY = 0, hasPv = false, skipX = 0, skipY = 0, skipped = false;
+      for (const v of line){
+        const p = toView(v, _p);
+        if (p[0] <= 0.02){ on = false; hasPv = false; continue; }
+        const X = sx(p), Y = sy(p);
+        if (X < -m || Y < -m || X > W + m || Y > H + m){
+          if (on){ g.lineTo(X, Y); on = false; }     // 화면을 벗어나는 첫 점까지는 이어 둔다
+          pvX = X; pvY = Y; hasPv = true; continue;
+        }
+        if (!on){
+          if (hasPv){ g.moveTo(pvX, pvY); g.lineTo(X, Y); } else g.moveTo(X, Y);
+          on = true; lx = X; ly = Y; hasPv = false; continue;
+        }
+        const dx = X - lx, dy = Y - ly;
+        if (dx * dx + dy * dy < minD2){ skipX = X; skipY = Y; skipped = true; continue; }
+        g.lineTo(X, Y); lx = X; ly = Y; skipped = false;
+      }
+      // 솎다가 끝난 선은 마지막 점을 살려 둔다 — 그러지 않으면 짧은 조각선이 통째로 사라진다
+      if (on && skipped) g.lineTo(skipX, skipY);
+    }
+    g.stroke(); g.restore();
+  }
+  // 배율에 따라 층이 하나씩 켜진다 — 해안선 먼저, 시도, 마지막에 시군구.
+  // 시군구는 정점이 3.4만 개라 지역 확대(z≈70)에서만 켠다. 그 배율에서는 화면 밖 컬링이 대부분을 걷어낸다.
+  function draw(z, desat){
+    // 시도는 동아시아 배율(z≈4.2~5.2)에서 아직 켜지 않는다 — 그 단계의 주인공은 광역 농도장이고,
+    // 이어진 시도망을 함께 깔면 반도 위가 하얀 그물로 덮인다. 한반도로 들어오며(z 5→9.5) 나타난다.
+    const wCoast = ss(2.0, 4.0, z), wSido = ss(5.0, 9.5, z), wSig = ss(45, 68, z);
+    const kz = ss(16, 25, z);       // 한반도 배율로 들어온 정도 — 배경 탈색(desat)과 같은 무릎을 쓴다
+                                    // (2026-08-15 desat 을 8~16 → 16~25 로 늦추며 함께 옮겼다)
+    // 어두운 지구본 위에서는 흰 선, 밝은 흑백 지도로 넘어가면 먹선이 읽힌다 — 탈색 정도로 섞는다
+    const mix2 = (a, b) => `rgba(${Math.round(lerp(255, 17, desat))},${Math.round(lerp(255, 21, desat))},`
+      + `${Math.round(lerp(255, 26, desat))},${lerp(a, b, desat).toFixed(3)})`;
+    strokeSet(L.coastEA, wCoast * (1 - ss(9, 16, z)), Math.max(0.7, 0.9 * S), mix2(0.55, 0.30));
+    // 해안선은 굵히기보다 **진하게** 한다. 남한 해안은 섬까지 10,378 km 라 폭을 두 배로 하면
+    // 소프트웨어 래스터가 칠할 면적이 지역 확대에서 13 fps 어치 늘어난다(실측). 농도는 공짜다.
+    strokeSet(L.coastKR, wCoast, Math.max(0.9, (1.25 + 0.45 * kz) * S), mix2(0.78, lerp(0.62, 0.90, kz)));
+    strokeSet(L.sigungu, wSig, Math.max(0.6, 0.8 * S), 'rgba(17,21,26,.30)');
+    // 시도 경계는 지역 확대의 단위이자 관객이 위치를 잡는 기준선이다 — 흰 받침을 깔고 먹선을 얹어
+    // 밝은 흑백 지도(한반도 배율)와 짙은 구면(동아시아 배율) 양쪽에서 읽히게 한다.
+    //   한반도 배율에서는 농도장 위에 얹히는 층이므로 굵기·농도를 함께 올린다. 지형 무늬로 읽히지 않으려면
+    //   화소 한 줄로는 부족하다. 굵기 순서는 해안 > 시도 > 시군구를 유지한다(계층이 뒤집히면 지도가 어색해진다).
+    const wl = (1.5 + 0.75 * kz) * S;
+    strokeSet(L.sido, wSido * lerp(0.85, 0.95, kz), Math.max(2.6, wl + 1.3 * S), 'rgba(255,255,255,.80)');
+    strokeSet(L.sido, wSido, Math.max(1.1, wl), `rgba(17,21,26,${lerp(0.78, 0.96, kz).toFixed(3)})`);
+  }
+  // 확대 단계에서는 카메라가 멎어 있는데도 매 프레임 같은 선을 다시 칠하고 있었다 — 이어진 경계망은
+  // 남한 해안 10,378 km + 시도 2,770 km + 시군구 10,505 km 라 지역 확대에서 그 값이 13 fps 다.
+  // 그래서 카메라·크기·탈색이 그대로면 오프스크린 한 장을 다시 얹는다(움직이는 동안은 예전처럼 매번 그린다).
+  //   전지구 단계(z<6)는 자전으로 매 프레임 키가 바뀌고 경계도 거의 꺼져 있어 캐시가 손해다 — 직접 그린다.
+  const boff = document.createElement('canvas'), bctx = boff.getContext('2d');
+  let bkey = '';
+  return { draw(z, desat){
+    if (z < 6){ g = ctx; draw(z, desat); return; }
+    const key = `${cv.width}|${cv.height}|${cx.toFixed(2)}|${cy.toFixed(2)}|${R.toFixed(3)}`
+      + `|${CAM.lon.toFixed(5)}|${CAM.lat.toFixed(5)}|${desat.toFixed(3)}`;
+    if (key !== bkey){
+      if (boff.width !== cv.width || boff.height !== cv.height){ boff.width = cv.width; boff.height = cv.height; }
+      bctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      bctx.clearRect(0, 0, W, H);
+      g = bctx; draw(z, desat); g = ctx;
+      bkey = key;
+    }
+    ctx.drawImage(boff, 0, 0, W, H);
+  } };
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  7. 상호작용 · 프레임
+// ═══════════════════════════════════════════════════════════════════════════
+// 드래그는 시선을 옮기고(배율이 클수록 같은 화소가 더 작은 각도다), 휠은 커서 아래 지점을 붙든 채 확대한다.
+if (!PANEL){
+  cv.style.pointerEvents = 'auto'; cv.style.cursor = 'grab';
+  let drag = null;
+  cv.addEventListener('pointerdown', e => {
+    drag = { x: e.clientX, y: e.clientY, lon: usr.dLon, lat: usr.dLat };
+    cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing';
+  });
+  cv.addEventListener('pointermove', e => {
+    ptr.x = e.clientX; ptr.y = e.clientY; ptr.on = true;      // 이름표 판정용 — 캔버스는 CSS 픽셀 좌표계다
+    if (!drag) return;
+    const kdeg = 180 / (Math.PI * R);                         // 화소 → 도
+    usr.dLon = drag.lon - (e.clientX - drag.x) * kdeg / Math.max(0.25, Math.cos(CAM.lat * D));
+    usr.dLat = drag.lat + (e.clientY - drag.y) * kdeg;
+  });
+  cv.addEventListener('pointerleave', () => { ptr.on = false; });
+  cv.addEventListener('pointerup',   () => { drag = null; cv.style.cursor = 'grab'; });
+  cv.addEventListener('wheel', e => {
+    e.preventDefault();
+    const ll = screenToLL(e.clientX, e.clientY);
+    const f = Math.exp(-clamp(e.deltaY, -240, 240) * 0.0016);
+    const z0 = clamp(preset().z * usr.zMul, 0.7, MAX_Z);
+    usr.zMul *= clamp(z0 * f, 0.7, MAX_Z) / z0;               // 총 배율 한계 안에서만 곱한다
+    // 커서 아래 지점을 제자리에 붙든다 — 중심을 그 지점 쪽으로 (1 − 1/f) 만큼 당기면 된다
+    if (ll){
+      const s = 1 - 1 / f;
+      usr.dLon += ((ll[0] - CAM.lon + 540) % 360 - 180) * s;
+      usr.dLat += (ll[1] - CAM.lat) * s;
+    }
+  }, { passive: false });
+  cv.addEventListener('dblclick', () => goStage('globe'));    // 두 번 누르면 전지구로 되돌린다
+}
+
+let tPrev = 0;
+function frame(now){
+  const t = now / 1000 + TOFF;
+  const dt = clamp(t - tPrev, 0, 0.1); tPrev = t;       // 탭 복귀 시 한 번에 튀지 않게 상한을 둔다
+  stepPan();                                           // 연출 큐의 느린 밀기 — 카메라보다 먼저 usr 을 옮긴다
+  updateCamera(t, dt);
+  const w = weights();
+  stepResFx(dt, w);                                    // 블록 · 1km 와이프가 km1 비중을 덮어쓴다(아래 층들이 그 값을 쓴다)
+  DESAT = w.desat; LOOK = w.rim;
+  visRect(); updateTexZoomW(); ensureDetail();
+  if (!REDUCED && GRAPH_ON) stepRunners(dt);
+  // 파면 상태 — 그리기와 무관하게 매 프레임 나아간다.
+  // ⚠ 그래프망을 끄면(?graph=0) 파면도 돌지 않으므로 노출을 파면에 맡길 수 없다 —
+  //   revealByWave 를 내려 REV_FILL 이 시간으로 채우게 한다(안 그러면 농도장이 영영 안 드러난다).
+  if (GRAPH_ON) stepWaves(t, w.mesh > 0.01); else revealByWave = false;
+  if (FIELD) FIELD.step(t, dt);                        // 자료 시각 보간 + 파면이 latch 한 노출도
+  if (seekPend !== null && FIELD){ FIELD.seek(seekPend); seekPend = null; }   // 연출 큐가 세운 시각(§10)
+  const krf = KRF.cur;                                 // 선택된 아키텍처의 1km 층
+  if (krf && CAM.z > 6) krf.prime();                   // 곧 필요해질 배율이면 미리 읽어 둔다(선택된 것만)
+  if (krf && w.km1 > 0.002 && FIELD) krf.step(FIELD.shownH, FIELD.mix);
+  if (STA && w.sta > 0.01) STA.step(FIELD ? FIELD.shownH : 0);
+  OVL += (OVL_T - OVL) * (REDUCED ? 1 : 1 - Math.exp(-dt * 3.5));                  // 덧층(§6.6) — 0.6초 남짓 녹아 든다
+  if (Math.abs(OVL_T - OVL) < 0.02) OVL = OVL_T;                                   // 끝자락은 붙인다(밑 농도장 · 범례가 엷게 남지 않게)
+  const ov = OVL > 0.01 ? ovlGet(OVL_KEY) : null, oa = ov && ov.ready ? OVL : 0;
+
+  ctx.clearRect(0, 0, W, H);
+  if (w.halo > 0.01) drawHalo(w.halo);
+  // SDG 궤도 뒷반 — 지구보다 **먼저** 그려야 구 뒤로 지나가는 것으로 읽힌다
+  if (SDG_ON && w.sat > 0.01) drawSDG(t, w.sat, -1);
+  const earth = renderEarth(DPR);
+  if (earth) blitSphere(earth);
+  else { ctx.fillStyle = '#2f7d4f'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill(); }
+  // 구 위 개체는 실루엣 안에만. 단 구가 화면을 통째로 덮는 배율에서는 클립 자체가 낭비다.
+  const covers = R * 0.998 >= Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy));
+  ctx.save();
+  if (!covers){ ctx.beginPath(); ctx.arc(cx, cy, R * 0.998, 0, TAU); ctx.clip(); }
+  // 농도장 두 층(광역 0.5° · 1km) — 화면 크기 합성은 소프트웨어 래스터에서 층마다 15 ms 쯤 든다.
+  // 그래서 1km 층이 있을 때는 두 층을 작은 오프스크린에서 먼저 겹쳐 놓고 화면에는 한 번만 확대한다.
+  const fl = w.field > 0.01 && FIELD && FIELD.layer(DPR, w.km1);
+  const kl = w.field > 0.01 && krf && FIELD && krf.layer(DPR, w.km1, FIELD.lut, FIELD.mix);
+  ctx.globalAlpha = w.field * (1 - oa);                // 농도장 배율 가중치(weights) — 덧층이 켜지면 그만큼 물러난다
+  if (fl && kl){
+    if (moff.width !== kl.width || moff.height !== kl.height){ moff.width = kl.width; moff.height = kl.height; }
+    mctx.clearRect(0, 0, moff.width, moff.height);
+    mctx.drawImage(fl, 0, 0, moff.width, moff.height);
+    mctx.drawImage(kl, 0, 0);
+    blitSphere(moff);
+  } else blitSphere(fl || kl);
+  ctx.globalAlpha = 1;
+  if (FIELD && BLK > 0.01 && w.field > 0.01) FIELD.blocks(BLK * w.field, w.km1);   // 광역 칸 그대로(해상도 대비)
+  if (krf && KG > 0.01 && w.field > 0.01) krf.grid(KG * w.field, w.km1);   // 1km 칸 경계선(해상도 대비, 2026-10-06)
+  if (oa > 0.01){                                      // 정적 1km 덧층(§6.6) — 칸이 보이게 최근접으로 확대하고 핫스팟 칸은 1.1초 주기로 깜빡인다
+    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    const l1 = ov.layer('img', DPR), l2 = ov.layer('hot', DPR);
+    ctx.globalAlpha = oa; blitSphere(l1);
+    ctx.globalAlpha = oa * (REDUCED ? 1 : 0.15 + 0.85 * (0.5 - 0.5 * Math.cos(TAU * t / 1.1))); blitSphere(l2);
+    ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = sm;
+  }
+  if (WIPE) drawWipeFront();
+  if (BND && w.bnd > 0.01){ ctx.globalAlpha = w.bnd; BND.draw(CAM.z, w.desat); ctx.globalAlpha = 1; }   // 해안선·행정경계
+  if (w.mesh > 0.01 && GRAPH_ON){ ctx.save(); ctx.globalAlpha = w.mesh; drawMesh(); ctx.restore(); }
+  if (w.mark > 0.01){ ctx.save(); ctx.globalAlpha = w.mark; drawKorea(t); ctx.restore(); }
+  if (STA && FIELD) STA.draw(w.sta, FIELD.lut, FIELD.mix);
+  if (oa > 0.01){ ctx.save(); ctx.globalAlpha = oa; ov.labels(); ctx.restore(); }
+  ctx.restore();
+  if (w.rim > 0.01){
+    ctx.strokeStyle = `rgba(255,255,255,${(0.55 * w.rim).toFixed(3)})`; ctx.lineWidth = 1.6 * S;
+    ctx.beginPath(); ctx.arc(cx, cy, R - 0.8 * S, 0, TAU); ctx.stroke();
+  }
+  if (w.sat > 0.01 && SAT_ON) drawSatellites(t, dt, w.sat);   // 위성은 실루엣 밖으로 나간다
+  if (SDG_ON && w.sat > 0.01) drawSDG(t, w.sat, +1);          // SDG 궤도 앞반 — 구 앞을 지난다
+  LEG_A = w.field * (1 - oa);                          // 농도 범례 — 물질·단위·눈금·자료 시각·출처. 농도장과 같은 알파를 쓴다
+  if (FIELD && w.field > 0.02) FIELD.legend(...srcLines(w));
+  chromeFade(w.text);
+  layerKey(w);
+  timeBar();
+  updateScaleBar();
+  if (SETTLE) checkSettle(dt);
+
+  if (running) raf = requestAnimationFrame(frame);
+}
+// 범례 아래 두 줄 — 지금 화면을 지배하는 자료의 출처를 적는다
+function srcLines(w){
+  const k = KRF.cur;
+  if (k && k.ready && w.km1 > 0.5){
+    const daily = FIELD && FIELD.meta.agg === 'daily-kst';
+    return [`${k.label} 1km 추론`,
+            staOn && w.sta > 0.5 ? '점 — AirKorea 측정망 관측'
+              : (daily ? '남한 1km 격자 · KST 일평균' : '남한 1km 격자')];
+  }
+  return [null, null];
+}
+// 하단 자료 계층 범례 — 지금 화면을 지배하는 층만 진하게 남긴다.
+//   층 가중이 곧 활성 여부다(weights). 별도 상태를 두면 그림과 범례가 어긋난다.
+const layEl = { wide: document.getElementById('layWide'), km1: document.getElementById('layKm1'),
+                sta: document.getElementById('laySta'),
+                staKey: document.getElementById('staKey') };
+let layOn = '';
+function layerKey(w){
+  const fld = w.field > 0.5;                           // 실제 농도장 표시 상태(weights.field)
+  const on = [fld && w.km1 < 0.5 ? 'wide' : '', fld && w.km1 > 0.5 ? 'km1' : '', w.sta > 0.5 ? 'sta' : '', arch].join('');
+  if (on === layOn) return;
+  layOn = on;
+  const k = KRF.cur;                                   // 1km 항목은 지금 고른 아키텍처를 적는다
+  if (k && layEl.km1){
+    layEl.km1.childNodes[1].textContent = `${k.label} 1 km `;
+    const em = layEl.km1.querySelector('em');
+    if (em && k.run) em.textContent = k.run;
+  }
+  layEl.wide?.classList.toggle('on', fld && w.km1 < 0.5);
+  layEl.km1?.classList.toggle('on', fld && w.km1 > 0.5);
+  layEl.sta?.classList.toggle('on', w.sta > 0.5);
+  layEl.staKey?.classList.toggle('on', w.sta > 0.5);
+}
+
+// 확대하면 좌측 글 블록이 지도를 가리므로 물러난다(하단 출처·범례는 남긴다)
+let chromeA = -1;
+function chromeFade(a){
+  if (Math.abs(a - chromeA) < 0.01) return;
+  chromeA = a;
+  for (const el of document.querySelectorAll('.kicker, .lede')) el.style.opacity = a.toFixed(3);
+  document.body.classList.toggle('zoomed', a < 0.5);
+}
+
+// ── 조작 패널 배선 ────────────────────────────────────────────────────────────
+// 지역 버튼은 한반도 단계에서만, 측정망 줄은 지역까지 들어갔을 때만 나타난다 —
+// 자산이 없으면(빌드 전) 줄 자체를 만들지 않는다.
+const rowRegion = document.getElementById('rowRegion'), rowSta = document.getElementById('rowSta');
+const rowArch = document.getElementById('rowArch'), rowCase = document.getElementById('rowCase');
+const rowTime = document.getElementById('rowTime'), rowMap = document.getElementById('rowMap');
+if (rowCase) for (const k of CASE_KEYS){
+  const b = document.createElement('button'); b.dataset.case = k; b.textContent = CASE_BY[k].label;
+  rowCase.appendChild(b);
+}
+if (rowRegion) for (const r of REGIONS){
+  const b = document.createElement('button'); b.dataset.region = r.key; b.textContent = r.label;
+  rowRegion.appendChild(b);
+}
+if (rowMap) for (const m of MAPSTYLES){
+  const b = document.createElement('button'); b.dataset.map = m.key; b.textContent = m.label;
+  rowMap.appendChild(b);
+}
+// 아키텍처 버튼은 실제로 있는 자산만 만든다 — 없는 것을 눌러 빈 화면이 되는 일이 없게
+// 아키텍처 버튼은 사례가 바뀌면 다시 그린다(사례마다 있는 자산이 다르다)
+function buildArchRow(){
+  if (!rowArch) return;
+  for (const b of [...rowArch.querySelectorAll('button')]) b.remove();
+  const LABEL = { e2e: 'AMR-HGN E2E', '2stage': 'Two-Stage' };
+  for (const k of archKeys()){
+    const b = document.createElement('button'); b.dataset.arch = k; b.textContent = LABEL[k] || k;
+    rowArch.appendChild(b);
+  }
+}
+function syncUI(){
+  for (const b of document.querySelectorAll('[data-stage]'))
+    b.setAttribute('aria-pressed', String(b.dataset.stage === stage && !region));
+  for (const b of document.querySelectorAll('[data-region]'))
+    b.setAttribute('aria-pressed', String(!!region && b.dataset.region === region.key));
+  for (const b of document.querySelectorAll('[data-sp]'))
+    b.setAttribute('aria-pressed', String(b.dataset.sp === spMode));
+  for (const b of document.querySelectorAll('[data-arch]'))
+    b.setAttribute('aria-pressed', String(b.dataset.arch === arch));
+  for (const b of document.querySelectorAll('[data-case]'))
+    b.setAttribute('aria-pressed', String(b.dataset.case === caseKey));
+  for (const b of document.querySelectorAll('[data-map]'))
+    b.setAttribute('aria-pressed', String(b.dataset.map === mapStyle));
+  buildArchRow();
+  for (const b of document.querySelectorAll('[data-arch]'))
+    b.setAttribute('aria-pressed', String(b.dataset.arch === arch));
+  if (rowRegion) rowRegion.hidden = stage !== 'kr';
+  // 배경지도는 한반도 배율부터 보인다 — 그 아래에서는 전지구 텍스처라 고를 것이 없다.
+  if (rowMap) rowMap.hidden = stage !== 'kr';
+  // 아키텍처 선택은 1km 층이 올라오는 단계에서만 의미가 있다. 자산이 하나뿐이면 줄을 감춘다.
+  if (rowArch) rowArch.hidden = !(stage === 'kr' && archKeys().length > 1);
+  if (rowSta){
+    rowSta.hidden = !(stage === 'kr' && region && STA);
+    const btn = document.getElementById('btnSta');
+    if (btn) btn.setAttribute('aria-pressed', String(staOn));
+  }
+  if (rowTime) rowTime.hidden = !FIELD;                // ?field=0 이면 잡을 시계가 없다
+  const bp = document.getElementById('btnPlay');
+  if (bp){                                             // 글자는 다음 동작 · aria-pressed 는 지금 멈춰 있음
+    bp.textContent = PAUSED ? '재생' : '정지';
+    bp.setAttribute('aria-pressed', String(PAUSED));
+    bp.title = PAUSED ? '농도장 시계를 다시 흐르게 한다' : '농도장 시계를 지금 시각에 세운다';
+  }
+  speedLabel();
+}
+// 재생 속도 슬라이더 — 칸(0~6)을 SPEEDS 배수로 옮긴다. 표시는 배수와 함께 '무엇이 얼마나 걸리는지'를 적는다
+// (창 사례는 시간/초, 연간은 1년 재생 길이) — 배수만 적으면 무엇이 두 배인지 알 수 없다.
+function speedLabel(){
+  const out = document.getElementById('spdv');
+  if (!out) return;
+  const daily = FIELD && FIELD.meta.agg === 'daily-kst';
+  out.textContent = `${SPEED.toFixed(2).replace(/0$/, '')}×`;
+  out.title = daily ? `1년을 ${(YEAR_SECS / SPEED).toFixed(0)}초에 재생`
+                    : `자료 시각 ${(HR_PER_S * SPEED).toFixed(1)}시간/초`;
+}
+const spdEl = document.getElementById('spd');
+if (spdEl){
+  const near = SPEEDS.reduce((b, v, i) => Math.abs(v - SPEED) < Math.abs(SPEEDS[b] - SPEED) ? i : b, 3);
+  spdEl.value = String(near);                          // ?pspd= 로 준 값에 가장 가까운 칸에 손잡이를 둔다
+  SPEED = SPEEDS[near];
+  spdEl.addEventListener('input', () => { SPEED = SPEEDS[+spdEl.value] || 1; speedLabel(); });
+}
+// 시각 바 — 끌어서 자료 시각을 잡는다. 누르면 시계가 멎고(SCRUB), 끌면 그 시각으로 가고, 떼면 그 자리에서
+// 다시 흐른다. 화살표 키로도 움직인다(그때는 멈추지 않고 흐르는 채로 옮겨 간다).
+//   손을 어디서 떼든 받아야 하므로 해제는 창에서 듣는다 — range 는 포인터를 캡처해 바깥에서 떼는 일이 흔하다.
+const tskEl = document.getElementById('tsk'), tskOut = document.getElementById('tskv');
+if (tskEl){
+  tskEl.addEventListener('pointerdown', () => { SCRUB = true; });
+  tskEl.addEventListener('input', () => { if (FIELD) FIELD.seek(+tskEl.value / 1000); });
+  addEventListener('pointerup', () => { SCRUB = false; });
+  addEventListener('pointercancel', () => { SCRUB = false; });
+}
+// 재생 중에는 손잡이가 시계를 따라 움직이고, 붙들고 있는 동안은 건드리지 않는다(손과 다투지 않게).
+// 문구는 바뀔 때만 쓴다 — 매 프레임 textContent 를 건드리면 그때마다 레이아웃이 다시 잡힌다.
+let tskStamp = '';
+function timeBar(){
+  if (!tskEl || !FIELD || !FIELD.ready) return;
+  if (!SCRUB) tskEl.value = String(Math.round(FIELD.pos * 1000));
+  const s = FIELD.stamp;
+  if (s !== tskStamp){ tskStamp = s; if (tskOut) tskOut.textContent = s; }
+}
+document.getElementById('ctl')?.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.stage) goStage(b.dataset.stage);
+  else if (b.dataset.region) goStage('kr', b.dataset.region);
+  else if (b.dataset.sp){ spMode = b.dataset.sp; syncUI(); }
+  else if (b.dataset.arch){ arch = b.dataset.arch; KRF.cur; syncUI(); }
+  else if (b.dataset.case){ setCase(b.dataset.case); }
+  else if (b.dataset.map){ setMapStyle(b.dataset.map); }
+  else if (b.id === 'btnSta'){ staOn = !staOn; syncUI(); }
+  else if (b.id === 'btnPlay'){ PAUSED = !PAUSED; syncUI(); }
+});
+// 하단 출처의 사례 기간은 자산 meta 에서 끌어온다(사례 창이 바뀌어도 문구가 어긋나지 않는다)
+function tailCredit(){
+  const el = document.getElementById('tailField');
+  if (!el || !FIELD) return;
+  const m = FIELD.meta, d0 = new Date(Date.parse(m.t0) + 9 * 3600e3);
+  const d1 = new Date(Date.parse(m.t0) + (9 + (m.nframes - 1) * (m.dtHours || 1)) * 3600e3);
+  const f = d => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  const agg = m.agg === 'daily-kst' ? ' 일평균' : '';   // 기간만 적으면 시간별인지 일평균인지 알 수 없다
+  el.textContent = `농도장 — CAMS EAC4 재분석 + GEOS-CF · AMR-HGN 1km 추론 (${f(d0)}~${f(d1)} KST${agg})`;
+}
+tailCredit();
+(() => {                                               // 측정망 지점 수와 종류 열쇠를 자산에서 채운다
+  const em = document.querySelector('#laySta em');
+  if (em && STA) em.textContent = `AirKorea ${STA.n}개 지점`;
+  if (layEl.staKey && STA) STA.types.forEach((t, i) => {
+    const b = document.createElement('b'), sw = document.createElement('i');
+    sw.className = 's' + i;                            // 도형은 CSS, 순서는 staPath 의 case 와 같다
+    b.append(sw, t); layEl.staKey.appendChild(b);
+  });
+})();
+syncUI();
+
+let running = true, raf = requestAnimationFrame(frame);
+function setRunning(on){
+  if (on === running) return;
+  running = on;
+  if (on) raf = requestAnimationFrame(frame); else cancelAnimationFrame(raf);
+}
+// ═══════════════════════════════════════════════════════════════════════════
+//  10. 연출 큐 — 영상 페이지(globe-intro-film.html)가 시간표를 쥐고 보낸다
+//      이 모듈은 상태만 반영한다. 조작 패널이 부르는 그 함수(setCase·goStage·staOn…)를
+//      그대로 부르므로 손으로 누른 결과와 큐로 만든 결과가 갈리지 않는다.
+//      ⚠ pan 만 예외다 — 단계 버튼(goStage)의 카메라는 0.25초 지수접근이라 '천천히 스크롤'이
+//        나오지 않는다. usr 오프셋(휠·드래그가 얹는 그 값)을 시간에 걸쳐 밀어 느린 확대를 만든다.
+//        층의 등장은 배율의 함수(weights)라 버튼으로 뛰든 이렇게 밀든 같은 배율에서 같은 그림이다.
+// ═══════════════════════════════════════════════════════════════════════════
+let panAnim = null, panHold = 0;                       // panHold — 멈춤 시각(초). 0 이면 흐르는 중이다.
+function stepPan(){
+  if (!panAnim || panHold) return;                     // 멈춰 있는 동안은 밀기도 함께 선다
+  const u = clamp((performance.now() / 1000 - panAnim.t0) / panAnim.dur, 0, 1);
+  // 이징 — 기본은 매끈한 시작·끝(smoothstep)이다. 다만 그 곡선은 **양 끝에서 속도가 0** 이라,
+  // 밀기를 두 번 이어 붙이면 이음매에서 반드시 한 번 멎는다. 서울에서 부산으로 가는 두 다리가
+  // 충청에서 멈춰 보이던 것이 그것이다. 그래서 큐가 곡선을 고를 수 있게 열어 둔다.
+  //   'in'     — 서서 출발해 **속도를 실은 채 끝난다**(뒤로 넘길 때). 끝 기울기 2.
+  //   'linear' — 등속. 여러 씬에 걸쳐 이어 붙이는 **가운데 다리**용이다. 기울기 1.
+  //   'out'    — **속도를 지닌 채 출발해** 서서히 멎는다(앞에서 넘겨받을 때). 첫 기울기 2.
+  // ⚠ 이어 붙이려면 이음매에서 `기울기 × 거리 ÷ 시간` 이 같아야 한다. 그래서 in → linear → out
+  //   사슬은 시간이 T 일 때 거리를 T/2 : T : T/2 로 나눈다(씬 5·6·7 의 배율 7.4 → 25 → 50).
+  const curve = E => E === 'in'     ? u * u
+                   : E === 'out'    ? u * (2 - u)
+                   : E === 'linear' ? u
+                   : u * u * (3 - 2 * u);
+  // ⚠ 이동(경위도)은 곡선을 따로 받을 수 있다 — `pease`(없으면 ease 를 따른다, 2026-09-11).
+  //   물러나며 옆으로 흐를 때는 배율이 멎어 가고(smoothstep) 이동은 붙어 가야(in) 한다. 한 곡선으로 두 축을
+  //   함께 밀면 **배율이 높은 초반에 이동이 몰려** 화면이 휙 쓸린다 — 화면에 보이는 이동 속도는
+  //   경도 속도 × 배율이라, 같은 경도를 옮겨도 z 1,000 에서는 z 150 보다 일곱 배 빠르게 보인다.
+  const e = curve(panAnim.ease), ep = panAnim.pease ? curve(panAnim.pease) : e;
+  // 배율은 로그축에서 섞는다 — 선형으로 밀면 초반이 훅 들어오고 후반이 기어간다(updateCamera 와 같은 규약)
+  usr.zMul = Math.exp(lerp(Math.log(panAnim.z0), Math.log(panAnim.z1), e));
+  usr.dLon = lerp(panAnim.a0, panAnim.a1, ep);
+  usr.dLat = lerp(panAnim.b0, panAnim.b1, ep);
+  if (u >= 1) panAnim = null;
+}
+function applyCue(c){
+  if (!c || typeof c !== 'object') return;
+  if (c.case) setCase(c.case);
+  if (c.sp) spMode = c.sp;
+  if (typeof c.camRate === 'number') CAM_RATE = Math.max(0.5, c.camRate);
+  // 단계 전환은 usr 오프셋을 0·1 로 되돌린다 — 반드시 pan 보다 먼저 처리해야 밀기가 살아남는다
+  if (c.stage){ panAnim = null; goStage(c.stage, c.region || null);
+    BLK = BLK_T = 0; KM_HOLD = KM_FORCE = false; WIPE = null; KG = KG_T = 0; }   // 해상도 대비 연출도 처음으로
+  // 해상도 대비 연출(2026-10-02) — 블록 모드와 1km 와이프. 설명은 stepResFx 머리 주석.
+  if (typeof c.blocks === 'number'){ BLK_T = clamp(c.blocks, 0, 1); if (BLK_T > 0) KM_HOLD = true; }
+  if (typeof c.km1Grid === 'number') KG_T = clamp(c.km1Grid, 0, 1);
+  if (c.km1Wipe){
+    const d = c.km1Wipe, dur = Math.max(0.001, d.sec ?? 2.2);
+    if (dur <= 0.05){ WIPE = null; KM_HOLD = false; KM_FORCE = true; BLK = BLK_T = 0; }   // 되감기·대목 이동 — 끝난 상태로
+    else {
+      const lat = d.lat ?? 37.55;
+      WIPE = { lon: d.lon ?? 126.98, lat, cl: Math.cos(lat * D), rMax: d.r ?? 6.5, f: d.feather ?? 0.8,
+               t0: performance.now() / 1000, dur, r: 0, u: 0 };
+      KM_HOLD = true;
+    }
+  }
+  if (typeof c.stations === 'boolean') staOn = c.stations;
+  if ('ovl' in c){ if (c.ovl){ OVL_KEY = c.ovl; ovlGet(c.ovl); } OVL_T = c.ovl ? 1 : 0; }   // 정적 1km 덧층(§6.6) — 끌 때는 열쇠를 남겨 물러나게 한다
+  // 자료 시각 세우기(0~1) — 시각 바를 그 자리로 끄는 것과 같다. 1km·측정망 층은 광역 시계를 따라오므로
+  // 이 한 값이 세 층을 함께 옮긴다. ⚠ **다음 프레임에 반영한다**(seekPend). FIELD.seek 은 기준 시각을
+  // 그 FIELD 가 마지막으로 돈 시각으로 잡는데, 사례를 막 갈아탄 FIELD 는 그 값이 수십 초 낡아 있어
+  // 곧바로 부르면 위상이 그만큼 튄다. FIELD.step 이 한 번 돈 뒤에 걸어야 한다.
+  if (typeof c.seek === 'number') seekPend = clamp(c.seek, 0, 1);
+
+  if (typeof c.speed === 'number'){
+    SPEED = c.speed;
+    const el = document.getElementById('spd');
+    if (el){ const i = SPEEDS.indexOf(SPEED); if (i >= 0) el.value = String(i); }
+  }
+  // 1km 자산(6~9 MB)을 미리 읽어 둔다 — true 면 지금 사례, 사례 키 배열이면 그 사례들을 앞당겨 읽는다
+  if (c.warm) for (const k of (Array.isArray(c.warm) ? c.warm : [caseKey])) krfCur(k);
+  // 권역 상세지도를 미리 읽는다(권역 키 배열, 2026-09-11) — 흐르는 카메라가 권역 경계를 넘는 순간 ensureDetail 이
+  // 청하면 해독(수천 px 정사각 · RGBA 40 MB 대)이 밀기와 겹쳐 프레임이 늘어진다. 카메라가 멎어 있는 자리에서 부른다.
+  if (c.warmMap) for (const k of c.warmMap)
+    if (REGION_BY[k]) MAPSTYLE_BY[mapStyle].legacy ? askDetailAsset(k) : askStyleAsset(mapStyle, k);
+  // 멈춤 — 자료 시계(PAUSED)와 연출 밀기(panAnim)를 함께 세운다. 둘 중 하나만 세우면
+  // 다시 재생할 때 그림이 훌쩍 건너뛴다(밀기는 절대 시각 기준이라 멈춘 만큼 t0 를 밀어 준다).
+  if (typeof c.paused === 'boolean' && c.paused !== PAUSED){
+    PAUSED = c.paused;
+    const now = performance.now() / 1000;
+    if (PAUSED) panHold = now;
+    else { if (panHold && panAnim) panAnim.t0 += now - panHold; if (panHold && WIPE) WIPE.t0 += now - panHold; panHold = 0; }
+  }
+  if (c.pan){
+    const d = c.pan, dur = Math.max(0.001, d.sec ?? 1);
+    // ⚠ 아주 짧은 밀기는 **애니메이션이 아니라 즉시 반영**이다. 되감기·대목 이동에서 지나온 씬의
+    //   밀기를 한 번에 몰아 보내는데, 그때 애니메이션으로 걸면 프레임이 도는 사이에 값이 덮여
+    //   마지막 것만 살아남는다(실측: 6번째 씬으로 뛰었더니 배율이 1에서 다시 기어 올라갔다).
+    if (dur <= 0.05){
+      usr.zMul = d.zoom ?? usr.zMul;
+      usr.dLon = d.dLon ?? usr.dLon;
+      usr.dLat = d.dLat ?? usr.dLat;
+      panAnim = null;
+    } else {
+      panAnim = { t0: performance.now() / 1000, dur, ease: d.ease, pease: d.pease,
+                  z0: usr.zMul,  z1: d.zoom ?? usr.zMul,
+                  a0: usr.dLon,  a1: d.dLon ?? usr.dLon,
+                  b0: usr.dLat,  b1: d.dLat ?? usr.dLat };
+    }
+  } else if (c.pan === null) panAnim = null;
+  syncUI();
+}
+// Esc — 이 모듈이 영상 안에 얹혀 있을 때 포커스가 여기에 잡히면 바깥의 Esc 가 먹지 않는다.
+// 그래서 여기서도 받아 위로 올린다(영상 페이지가 다시 덱으로 중계한다). 단독으로 열었을 때는
+// 부모가 없으므로 아무 일도 일어나지 않는다 — 규약은 01편 다큐와 같은 { deck:'film-close' } 다.
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && parent !== window) parent.postMessage({ deck: 'film-close' }, '*');
+});
+// 부모 슬라이드가 장을 벗어나면 멈춘다. 밤 지구 모듈과 같은 규약({on:bool})을 받는다.
+addEventListener('message', e => {
+  const d = e.data; if (!d || typeof d !== 'object') return;
+  if (typeof d.on === 'boolean') setRunning(d.on);
+  if (d.cue) applyCue(d.cue);
+  if (d.cue && d.cue.seq != null && e.source) SETTLE = { seq: d.cue.seq, src: e.source, calm: 0 };   // 고정 신호를 기다리는 쪽(checkSettle)
+  // 영상 페이지가 배율을 재 눈금을 잡을 때 쓴다(연출 좌표를 손으로 추측하지 않게)
+  if (d.probe && e.source) e.source.postMessage({ probe: 'cam', z: CAM.z, lon: CAM.lon, lat: CAM.lat }, '*');
+});
+document.addEventListener('visibilitychange', () => setRunning(!document.hidden));
+})();
+</script>
+</body>
+</html>

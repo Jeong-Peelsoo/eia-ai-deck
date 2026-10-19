@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<!-- 잠재공간 융합 애니메이션 v3 — AMR-HGN(1 km 이종 그래프)과 FGNO(연속 신경 연산자): 같은 목표, 다른 연산자.
+     설계 plan/latent-fusion-v2/design.md · 원고 narration.md · 근거 sources.md · 결정 context-notes.md. 옛 판은 Git d6b0c6d(SVG) · 9ed6715(v2 캔버스).
+     v3(2026-09-25) — 국지 농도장의 공간 패턴을 CAPSS 2021 1 km 배출(교통·면·점)과 MODIS 토지피복(capss_local_1km.js)에서 만든다.
+       0단계는 거친 광역 배경(수십 km)과 세밀한 국지(1 km)를 따로 보인다. 1·2·5·6단계는 three.js 3D 층(#gl)을 2D 지도(#cv) 위에 겹친다.
+       6단계가 끝나도 멈추지 않는다 — 화면과 배경음악이 이어진다(종료·Esc 로 멈춘다).
+     모든 화면은 (단계 p, 단계 시각 τ)의 함수다 — 되감기·단계 이동이 곧 그 시각의 그림이다.
+     농도장은 개념 시각화(해석 함수)이지 모델 출력이 아니다 — 화면 우하단에 늘 표기한다. 측정소 좌표와 CAPSS·토지피복의 공간 분포만 실제다. -->
+<html lang="ko">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AMR-HGN 잠재공간 융합과 FGNO — 같은 목표, 다른 연산자</title>
+<script src="vendor/proj4.js"></script>
+<script src="vendor/three-r170.iife.js"></script>
+<link href="vendor/fonts.css" rel="stylesheet">
+<style>
+  :root { --bg:#f8fafc; --text:#1e293b; --muted:#64748b; --panel:rgba(255,255,255,.95); --border:rgba(15,23,42,.1);
+    --title:#0f172a; --hover:rgba(0,0,0,.04); --act-bg:rgba(59,130,246,.1); --act-bd:rgba(59,130,246,.3);
+    --num-bg:#e2e8f0; --num-tx:#64748b; --blue:#2563eb; --bar:rgba(248,250,252,.95); --chip:rgba(255,255,255,.92); }
+  [data-theme="dark"] { --bg:#060c1a; --text:#e2e8f0; --muted:#94a3b8; --panel:rgba(10,17,35,.92); --border:rgba(255,255,255,.07);
+    --title:#f0f4ff; --hover:rgba(255,255,255,.04); --act-bg:rgba(59,130,246,.08); --act-bd:rgba(59,130,246,.22);
+    --num-bg:#1e293b; --num-tx:#64748b; --bar:rgba(6,12,26,.95); --chip:rgba(8,14,30,.86); }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  html, body { width:100%; height:100%; overflow:hidden; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter','Noto Sans KR',sans-serif; display:flex; flex-direction:column; }
+  [hidden] { display:none !important; }
+  #header { padding:14px 32px 10px; display:flex; align-items:flex-end; justify-content:space-between; border-bottom:1px solid var(--border); }
+  #header .hl { display:flex; align-items:flex-end; gap:18px; }
+  #header h1 { font-size:20px; font-weight:700; color:var(--title); letter-spacing:-.3px; }
+  #header .sub { font-size:12px; color:var(--muted); }
+  #theme-toggle { background:transparent; border:1px solid var(--border); color:var(--text); padding:4px 10px; border-radius:6px; cursor:pointer; font-size:12px; }
+  #main { display:flex; flex:1; min-height:0; }
+  #map-wrap { flex:1; position:relative; overflow:hidden; }
+  #cv { position:absolute; inset:0; display:block; cursor:grab; z-index:0; }
+  #cv.drag { cursor:grabbing; }
+  /* 3D 층 · 글자 층 — 마우스는 아래 #cv 가 받는다 */
+  #gl { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; opacity:0; z-index:1; }
+  #hud { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; z-index:2; }
+  #panel { width:292px; min-width:292px; background:var(--panel); border-left:1px solid var(--border); overflow-y:auto; }
+  .sec { padding:14px 16px 12px; border-bottom:1px solid var(--border); }
+  .sec h3 { font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; font-weight:600; }
+  .phase-btn { display:flex; gap:10px; width:100%; background:transparent; padding:8px 10px; border-radius:8px; cursor:pointer; text-align:left;
+    border:1px solid transparent; margin-bottom:3px; color:var(--text); transition:background .2s; }
+  .phase-btn:hover { background:var(--hover); }
+  .phase-btn.active { background:var(--act-bg); border-color:var(--act-bd); }
+  .phase-btn .num { width:21px; height:21px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px;
+    font-weight:700; flex-shrink:0; margin-top:1px; background:var(--num-bg); color:var(--num-tx); }
+  .phase-btn.active .num { background:var(--blue); color:#fff; }
+  .phase-btn .lb { font-size:12.5px; font-weight:600; display:block; }
+  .phase-btn.active .lb { color:#3b82f6; }
+  .phase-btn .ds { font-size:10.5px; color:var(--muted); margin-top:2px; line-height:1.35; display:block; }
+  .phase-btn .tag { font-size:9.5px; font-weight:700; color:#a78bfa; margin-left:5px; }
+  .opt { display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:8px; cursor:pointer; user-select:none; }
+  .opt input { accent-color:#2563eb; width:14px; height:14px; cursor:pointer; }
+  .note { font-size:10.5px; color:var(--muted); line-height:1.5; }
+  .lg { display:flex; align-items:center; gap:8px; font-size:11.5px; margin-bottom:6px; }
+  .lg i { display:inline-block; flex-shrink:0; }
+  #bottom-bar { padding:10px 20px; background:var(--bar); border-top:1px solid var(--border); display:flex; align-items:center; gap:14px; }
+  .cg { display:flex; align-items:center; gap:8px; }
+  #play-btn { background:var(--blue); color:#fff; border:none; padding:8px 22px; border-radius:20px; cursor:pointer; font-size:13px; font-weight:600; min-width:92px; }
+  #stop-btn { background:transparent; color:var(--text); border:1px solid var(--border); padding:8px 16px; border-radius:20px; cursor:pointer; font-size:13px; font-weight:600; }
+  .speed-btn { background:transparent; color:var(--text); border:1px solid var(--border); padding:6px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600; }
+  .speed-btn.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+  #progress-wrap { flex:1; padding:7px 0; cursor:pointer; touch-action:none; position:relative; }
+  #track { position:relative; height:6px; background:var(--border); border-radius:3px; }
+  #fill { height:100%; background:var(--blue); width:0; border-radius:3px; }
+  #handle { position:absolute; top:50%; left:0; width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid var(--blue);
+    box-shadow:0 1px 4px rgba(0,0,0,.35); transform:translate(-50%,-50%); pointer-events:none; }
+  .tick { position:absolute; top:-3px; width:2px; height:12px; background:var(--muted); opacity:.5; transform:translateX(-50%); pointer-events:none; }
+  #tip { position:absolute; bottom:22px; padding:4px 9px; background:var(--panel); border:1px solid var(--border); border-radius:6px; font-size:11px;
+    font-weight:600; white-space:nowrap; transform:translateX(-50%); display:none; pointer-events:none; z-index:10; }
+  #ptime { min-width:91px; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; text-align:right; }
+  #pinfo { font-size:13px; color:var(--muted); min-width:210px; text-align:right; }
+  #pinfo b { color:var(--text); }
+  /* 지도 위 오버레이 — 줌과 무관 */
+  .ov { position:absolute; pointer-events:none; z-index:5; }
+  .chipbox { background:var(--chip); border:1px solid var(--border); border-radius:10px; }
+  #compass { top:12px; left:12px; padding:8px 12px; display:flex; align-items:center; gap:10px; font-size:11px; color:var(--muted); }
+  #compass b { display:block; font-size:12.5px; color:var(--text); }
+  #chip { bottom:14px; left:12px; padding:9px 14px; font-size:12px; line-height:1.55; color:var(--muted); max-width:560px; transition:opacity .4s; }
+  #chip b { color:var(--text); } #chip .fm { font-family:'Inter',monospace; color:#38bdf8; font-weight:600; }
+  #cbar { bottom:14px; right:12px; padding:8px 12px; font-size:10px; color:var(--muted); }
+  #cbar .g { width:140px; height:10px; border-radius:3px; margin:4px 0 3px;
+    background:linear-gradient(90deg,#1e40af,#06b6d4,#34d399,#facc15,#fb923c,#ef4444); }
+  #cbar .r { display:flex; justify-content:space-between; }
+  #concept { bottom:84px; right:12px; font-size:10.5px; color:var(--muted); text-align:right; line-height:1.45; }
+  #zoom-ctrl { top:12px; right:12px; display:flex; flex-direction:column; gap:4px; pointer-events:auto; }
+  #zoom-ctrl button { width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--chip); color:var(--text); cursor:pointer; font-size:16px; }
+  #title-card { top:18%; left:50%; transform:translateX(-50%); text-align:center; opacity:0; }
+  #title-card .k { font-family:'Inter'; font-size:13px; letter-spacing:.35em; color:#7dd3fc; font-weight:700; }
+  #title-card .t { margin-top:10px; font-size:34px; font-weight:800; color:#f8fafc; text-shadow:0 0 30px rgba(56,189,248,.45),0 3px 20px rgba(0,0,0,.9); white-space:nowrap; }
+  [data-theme="light"] #title-card .t { color:#0f172a; text-shadow:0 0 20px rgba(255,255,255,.9); }
+  #subtitle { bottom:18px; left:50%; transform:translateX(-50%); width:min(calc(100% - 420px),1000px); text-align:center; font-size:21px; font-weight:500;
+    line-height:1.45; color:#f1f5f9; text-shadow:0 2px 12px rgba(0,0,0,.95),0 0 3px rgba(0,0,0,.9); word-break:keep-all; opacity:0; }
+  [data-theme="light"] #subtitle { color:#0f172a; text-shadow:0 0 8px #fff,0 0 3px #fff; }
+  #banner { top:14px; left:50%; transform:translateX(-50%); padding:10px 22px; font-size:17px; font-weight:700; color:#fde68a; white-space:nowrap;
+    border-color:rgba(253,230,138,.5); opacity:0; }
+  .lab { bottom:120px; transform:translateX(-50%); padding:8px 16px; font-size:15px; font-weight:700; white-space:nowrap; text-align:center; opacity:0; }
+  .lab small { display:block; font-size:12px; font-weight:500; color:var(--muted); margin-top:2px; }
+  #lab-l { left:30%; color:#fbbf24; border-color:rgba(251,191,36,.45); }
+  #lab-r { left:70%; color:#c4b5fd; border-color:rgba(167,139,250,.45); }
+</style>
+</head>
+
+<body data-theme="dark">
+<div id="header">
+  <div class="hl">
+    <h1>AMR-HGN 물리유도 잠재공간 융합학습과 FGNO</h1>
+    <span class="sub">종관·국지 중첩 현상 — 같은 목표, 다른 연산자</span>
+  </div>
+  <button id="theme-toggle">Go Light Mode</button>
+</div>
+
+<div id="main">
+  <div id="map-wrap">
+    <canvas id="cv"></canvas>
+    <canvas id="gl"></canvas>
+    <canvas id="hud"></canvas>
+    <div class="ov chipbox" id="compass"><svg width="30" height="30" viewBox="-15 -15 30 30"><circle r="13" fill="none" stroke="currentColor" opacity=".4"/>
+      <path d="M0,-10 L3.6,5 L0,2.6 L-3.6,5 Z" fill="#38bdf8" transform="rotate(105)"/></svg><div>종관풍 (개념)<b>서북서 → 동남동</b></div></div>
+    <div class="ov" id="zoom-ctrl"><button id="zin" title="확대">＋</button><button id="zout" title="축소">－</button><button id="zreset" title="전체 보기" style="font-size:13px">⤢</button></div>
+    <div class="ov" id="title-card"><div class="k" id="tc-k">STAGE 0</div><div class="t" id="tc-t"></div></div>
+    <div class="ov chipbox" id="banner">같은 목표 — 흩어진 관측으로 전국 1 km 농도장</div>
+    <div class="ov chipbox lab" id="lab-l">AMR-HGN<small>세 층 그래프 위의 메시지 전달 · 이산 1 km 격자</small></div>
+    <div class="ov chipbox lab" id="lab-r">FGNO<small>연속 장 전체의 변환 · 신경 연산자</small></div>
+    <div class="ov" id="subtitle"></div>
+    <div class="ov chipbox" id="chip"></div>
+    <div class="ov" id="concept">개념 시각화 — 농도장은 모델 출력이 아니다<br>국지 패턴의 바탕은 CAPSS 2021 1 km 배출 · MODIS 토지피복</div>
+    <div class="ov chipbox" id="cbar">농도 (상대 단위)<div class="g"></div><div class="r"><span>저농도</span><span>고농도</span></div></div>
+  </div>
+
+  <div id="panel">
+    <div class="sec"><h3>시뮬레이션 단계</h3><div id="phase-list"></div></div>
+    <div class="sec"><h3>옵션</h3>
+      <label class="opt"><input type="checkbox" id="narr-on" checked>내레이션 재생 (여성 · Gemini Gacrux)</label>
+      <label class="opt"><input type="checkbox" id="music-on" checked>배경음악</label>
+      <input type="range" id="music-vol" min="0" max="1" step="0.02" value="0.6" style="width:100%;accent-color:#2563eb">
+      <p class="note" style="margin-top:6px">🔊 AI 생성 음성 · 단계 0–6 자동 내레이션 · 마지막 단계가 끝나도 화면과 음악은 이어진다(■ 종료·Esc 로 멈춤) · 지도는 휠·끌기로 확대·이동, 3D 는 끌어 돌린다(⤢ 로 복귀)</p>
+    </div>
+    <div class="sec"><h3>범례</h3>
+      <div class="lg"><i style="width:11px;height:11px;border-radius:50%;background:#ff5fb4;box-shadow:0 0 8px #ff5fb4"></i>측정소 (점 관측 · 정답)</div>
+      <div class="lg"><i style="width:11px;height:11px;border:1px solid #64748b;background:rgba(56,189,248,.25)"></i>1 km 격자 셀 (AMR-HGN · 국지)</div>
+      <div class="lg"><i style="width:10px;height:10px;background:#fbbf24;transform:rotate(45deg)"></i>5 km 광역 노드</div>
+      <div class="lg"><i style="width:22px;height:3px;background:#fde68a"></i>어텐션 가중치 α (굵기)</div>
+      <div class="lg"><i style="width:22px;height:10px;background:linear-gradient(90deg,#6d28d9,#38bdf8);border-radius:2px"></i>연속 장 (FGNO)</div>
+      <div class="lg"><i style="width:22px;height:10px;background:linear-gradient(90deg,#166534,#5c5426,#64748b);border-radius:2px"></i>토지피복 — 산림 · 농경지 · 도시</div>
+      <p class="note" style="margin-top:6px">실제인 것 — 측정소 좌표(에어코리아 664곳), 국지 패턴의 바탕인 CAPSS 2021 1 km 배출(교통·면·점오염원)과 MODIS 토지피복의 공간 분포. 농도 값·바람·어텐션·학습 곡선은 개념 시각화다.</p>
+    </div>
+  </div>
+</div>
+
+<div id="bottom-bar">
+  <div class="cg"><button id="play-btn">▶ 재생</button><button id="stop-btn">■ 종료</button></div>
+  <div class="cg"><button class="speed-btn active" data-s="1">x1.0</button><button class="speed-btn" data-s="1.2">x1.2</button><button class="speed-btn" data-s="1.5">x1.5</button></div>
+  <div id="progress-wrap"><div id="track"><div id="fill"></div><div id="handle"></div></div><div id="tip"></div></div>
+  <div id="ptime">00:00 / 00:00</div>
+  <div id="pinfo">단계: <b id="plabel">0 / 대기 현상</b></div>
+</div>
+
+<script src="geo_ctprvn.js"></script>
+<script src="geo_sig.js"></script>
+<script src="real_nodes_data.js"></script>
+<script src="capss_local_1km.js"></script>
+<script src="audio/gacrux/narration_timeline.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = x => { x = clamp(x); return x * x * (3 - 2 * x); };
+const ramp = (t, t0, d) => smooth((t - t0) / d);
+const win = (t, t0, t1, fi = .5, fo = .5) => ramp(t, t0, fi) * (1 - ramp(t, t1 - fo, fo));
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ═════════ 단계 · 원고 시각 ═════════
+const PH = [
+  { lb: '대기 현상 — 스케일 중첩', ds: '거친 광역 배경(전지구 화학수송모델·3차원 기상장)과 세밀한 국지 오염(CAPSS 배출·토지피복, 1 km)이 겹친 참 농도장 — 정답은 측정소 점뿐',
+    chip: '참 농도장 = <b>광역 배경</b>(전지구 화학수송모델 · 3차원 기상장 — 거친 수십 km) ⊕ <b>국지 오염</b>(CAPSS 배출 · 토지피복 — 1 km) · 정답은 측정소 <b>664곳</b>의 점 관측' },
+  { lb: '이종 그래프 구성', ds: '1 km 격자 · 5 km 광역 · 측정소 — 세 층의 노드를 서로 다른 엣지로 잇는다 (3D)',
+    chip: '노드 3종 — <b>측정소</b> · <b>1 km 격자</b>(국지) · <b>5 km 광역</b>. 층 안·층 사이를 서로 다른 엣지로 이어 하나의 이종 그래프' },
+  { lb: '메시지 패싱 — 잠재공간 융합', ds: '세 층 사이로 모였다 퍼지는 메시지(3D) → 한 잠재공간에서 섞이고, 어텐션으로 이웃을 가려 듣는다(2D)',
+    chip: '격자 → 광역·측정소로 <b>모으고</b> → 모든 격자로 <b>퍼뜨린다</b>. 넓은 배경과 좁은 국지가 <b>하나의 잠재공간</b>에서 섞인다' },
+  { lb: 'E2E 학습 — 순차 전이', ds: '측정소 오차를 줄이는 되풀이 — 북부에서 먼저 배우고, 그 가중치로 중부 → 남부 → 제주를 차례로',
+    chip: '학습 = 측정소 값과의 <b>오차</b>를 줄이는 되풀이 · <b>북부</b>에서 먼저 배우고 그 가중치로 <b>중부 → 남부 → 제주</b>를 이어 학습(순차 전이)' },
+  { lb: '추론 — 전국 1 km 복원', ds: '측정소가 없는 곳까지 1 km 격자 농도를 시간마다 채운다',
+    chip: '추론 — 측정소가 없는 곳까지 <b>1 km 격자</b> × <b>한 해 8,760시간</b>' },
+  { lb: 'FGNO — 연속 장을 배우는 법', ds: '관측 → 연속 잠재장 → 파동 모드로 장 전체 변환 · 가린 측정소 예측 · 임의 좌표 질의 (3D)', tag: '개발 단계',
+    chip: '<b>FGNO</b> — 관측 → <b>연속 잠재장</b> → 장 전체의 변환 → <b>임의 좌표</b>에서 읽기. 학습: <b>가린 측정소</b>를 예측 · 개발 단계' },
+  { lb: '같은 목표, 다른 연산자', ds: 'AMR-HGN 세 층 그래프의 메시지 전달 vs FGNO 연속 장 전체의 변환 (3D 좌우)',
+    chip: '같은 목표 — <b>흩어진 관측 → 전국 1 km 농도장</b>. 다른 연산자 — <b>그래프 메시지 전달</b> vs <b>연속 장의 적분 연산자</b>' },
+];
+const LEAD = 1.2, TRANS = 2.2;
+const NARR = (window.LATENT_NARR && window.LATENT_NARR.phases) || [];
+const NDUR = PH.map((_, p) => (NARR[p] && NARR[p].dur) || 18);
+const CUES = PH.map((_, p) => (NARR[p] && NARR[p].cues ? NARR[p].cues : [{ t: 0, text: '' }]).map(c => ({ t: LEAD + c.t, text: c.text })));
+const cue = (p, i) => { const c = CUES[p]; return i < c.length ? c[i].t : LEAD + NDUR[p] * i / (i + 1); };
+// 문장 안의 구절 시각 — 그 문장 길이의 비율로 잡는다(원고를 다시 합성해도 따라 움직인다)
+const along = (p, i, f) => lerp(cue(p, i), i + 1 < CUES[p].length ? cue(p, i + 1) : LEAD + NDUR[p], f);
+// 3단계 순차 전이 일정 — 북부에 가장 긴 시간을 준다. 내레이션이 끝난 뒤에도 화면이 이어진다(음악만)
+const P3PLAN = (() => { const a0 = cue(3, 1) + .5, dom = [{ d: 0, a: a0, b: a0 + 6.2, s0: 0, K: 6 }]; let t = dom[0].b;
+  [[1.1, 2.6, 3], [.9, 2.3, 3], [.9, 1.7, 2]].forEach(([gap, len, K], i) => { const a = t + gap; dom.push({ d: i + 1, x: t, a, b: a + len, s0: .35, K }); t = a + len; });
+  return { dom, end: t }; })();
+const TAIL = [2.2, 2.2, 2.2, Math.max(2.2, P3PLAN.end + 1.8 - LEAD - NDUR[3]), 2.2, 2.2, 2.2];
+const DUR = NDUR.map((d, p) => LEAD + d + TAIL[p]);
+const START = DUR.map((_, p) => DUR.slice(0, p).reduce((a, b) => a + b, 0));
+const TOTAL = DUR.reduce((a, b) => a + b, 0);
+const DISP = [['에이엠알 에이치지엔', 'AMR-HGN'], ['에프지엔오', 'FGNO'], ['일 킬로미터', '1 km'], ['오 킬로미터', '5 km'], ['수백 킬로미터', '수백 km'], ['수 킬로미터', '수 km'],
+  ['캡스', 'CAPSS'], ['삼차원', '3차원']];
+const disp = s => DISP.reduce((a, [k, v]) => a.split(k).join(v), s);
+
+// ═════════ 좌표 · 자료 ═════════
+proj4.defs('EPSG:5179', '+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no_defs');
+const toKm = (lo, la) => { const q = proj4('WGS84', 'EPSG:5179', [lo, la]); return [(q[0] - 748000) / 1000, (q[1] - 1344000) / 1000]; };
+const D = { x0: 80, x1: 450, y0: 110, y1: 710 }, NX = 370, NY = 600, NN = NX * NY;
+function geoPath(fc) { const path = new Path2D();
+  for (const f of fc.features) { const gm = f.geometry, polys = gm.type === 'Polygon' ? [gm.coordinates] : gm.coordinates;
+    for (const poly of polys) for (const ring of poly) { ring.forEach(([lo, la], i) => { const [x, y] = toKm(lo, la); i ? path.lineTo(x, y) : path.moveTo(x, y); }); path.closePath(); } }
+  return path; }
+const CTP = geoPath(geoCTPRVN), SIG = geoPath(geoSIG);
+const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const mask = new Uint8Array(NN);
+{ const c = mkCanvas(NX, NY), x = c.getContext('2d'); x.setTransform(1, 0, 0, -1, -D.x0, D.y1); x.fillStyle = '#fff'; x.fill(CTP);
+  const d = x.getImageData(0, 0, NX, NY).data; for (let i = 0; i < NN; i++) mask[i] = d[i * 4] > 100 ? 1 : 0; }
+const cellOf = (x, y) => { const i = Math.floor(x - D.x0), j = Math.floor(D.y1 - y); return (i < 0 || j < 0 || i >= NX || j >= NY) ? -1 : j * NX + i; };
+const onLand = (x, y) => { const k = cellOf(x, y); return k >= 0 && mask[k] === 1; };
+const LAND = []; for (let k = 0; k < NN; k++) if (mask[k]) LAND.push(k);
+const KX = k => D.x0 + k % NX + .5, KY = k => D.y1 - Math.floor(k / NX) - .5;   // 셀 중심 km
+const SUB = [{ n: 'North', ko: '북부', x0: 90, x1: 440, y0: 540, y1: 700, c: '#3b82f6' }, { n: 'Central', ko: '중부', x0: 90, x1: 440, y0: 380, y1: 540, c: '#10b981' },
+  { n: 'South', ko: '남부', x0: 90, x1: 440, y0: 220, y1: 380, c: '#f59e0b' }, { n: 'Jeju', ko: '제주', x0: 120, x1: 210, y0: 115, y1: 170, c: '#ec4899' }];
+const domOf = (x, y) => { if (y < 200) return 3; if (y >= 540) return 0; if (y >= 380) return 1; return 2; };
+const DOMK = new Uint8Array(NN); for (const k of LAND) DOMK[k] = domOf(KX(k), KY(k));
+const ST = realStationNodes.map(s => ({ x: s.x_km, y: s.y_km, type: s.type }));
+
+// ═════════ CAPSS 2021 1 km 배출 · MODIS 토지피복 (capss_local_1km.js — scripts/build_capss_local.py) ═════════
+// 공간 분포만 실제다. 이것으로 만드는 국지 농도는 개념장이다.
+const CAP = window.CAPSS_1KM;
+const HAVE_CAP = !!(CAP && CAP.nx === NX && CAP.ny === NY && CAP.x0 === D.x0 && CAP.y1 === D.y1);
+if (!HAVE_CAP) console.warn('capss_local_1km.js 가 없거나 격자가 다르다 — 국지장이 비어 보인다');
+const unb64 = s => { const b = atob(s), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; };
+const RD = new Float32Array(NN), UR = new Float32Array(NN), IN = new Float32Array(NN), LCC = new Uint8Array(NN);
+if (HAVE_CAP) { const r = unb64(CAP.road), u = unb64(CAP.urban), q = unb64(CAP.ind), l = unb64(CAP.lc);
+  for (let k = 0; k < NN; k++) { RD[k] = r[k] / 255; UR[k] = u[k] / 255; IN[k] = q[k] / 255; LCC[k] = l[k]; } }
+// IGBP → 묶음: 산림 1–5 · 관목림 8 · 초지 9·10 · 습지 11 · 농경지 12·14 · 도시 13 · 나지 16
+const LCKIND = c => (c >= 1 && c <= 5) ? 1 : c === 8 ? 2 : (c === 9 || c === 10) ? 3 : (c === 12 || c === 14) ? 4 : c === 13 ? 5 : c === 11 ? 6 : c === 16 ? 7 : 0;
+const LCF_BY = [.95, .84, .88, .92, .96, 1.06, .92, .95];   // 배경에 곱하는 개념 계수 — 산림은 조금 맑게, 도시는 조금 짙게
+const LCF = new Float32Array(NN).fill(1); for (const k of LAND) LCF[k] = LCF_BY[LCKIND(LCC[k])];
+
+function landBlur(src, r, passes = 3) {   // 육지만 평균하는 상자 흐림 — 해안선은 그대로
+  let a = Float32Array.from(src), m = Float32Array.from(mask);
+  const run = (v, horiz) => { const o = new Float32Array(NN), n = horiz ? NX : NY, L = horiz ? NY : NX;
+    for (let l = 0; l < L; l++) { let s = 0; const at = i => horiz ? l * NX + i : i * NX + l;
+      for (let i = -r; i <= r; i++) if (i >= 0 && i < n) s += v[at(i)];
+      for (let i = 0; i < n; i++) { o[at(i)] = s; const ip = i + r + 1, im = i - r; if (ip < n) s += v[at(ip)]; if (im >= 0) s -= v[at(im)]; } } return o; };
+  for (let p = 0; p < passes; p++) { const am = a.map((x, k) => x * m[k]); const sa = run(run(am, true), false), sm = run(run(m, true), false);
+    a = sa.map((x, k) => sm[k] > 1e-6 ? x / sm[k] : 0); m = Float32Array.from(mask); }
+  return a; }
+function hash(i, j) { let h = (i * 374761393 + j * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+function vnoise(x, y) { const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j, ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+  return lerp(lerp(hash(i, j), hash(i + 1, j), ux), lerp(hash(i, j + 1), hash(i + 1, j + 1), ux), uy); }
+
+// ═════════ 개념 농도장 (해석 함수 — 모델 출력 아님) ═════════
+const WD = [0.966, -0.259], NRM = [0.259, 0.966];   // 285° 에서 불어오는 종관풍의 진행 방향 · 수직
+// 국지 — 도로(선) · 도시(면, 부드럽게) · 산업·발전(점 → 바람 아래 플룸). 시각 t 에 교통 물결 · 플룸 덩이가 흐른다
+// CAPSS 층은 log1p 로 눌려 있다 — 조금 풀어(dl) 간선도로·도심·산단 핫스팟이 한적한 곳과 갈리게 한다
+const dl = (x, k) => (Math.exp(k * x) - 1) / (Math.exp(k) - 1);
+const ROADL = new Float32Array(NN), URBL = new Float32Array(NN), PLM = new Float32Array(NN), PAG = new Float32Array(NN), RPH = new Float32Array(NN);
+{ const re = RD.map(x => dl(x, 3.5)), ue = UR.map(x => dl(x, 3.5)), rb = landBlur(re, 1, 1), ub = landBlur(ue, 2, 2);
+  for (const k of LAND) { ROADL[k] = .85 * re[k] + .25 * rb[k]; URBL[k] = ub[k]; RPH[k] = 6.283 * vnoise(KX(k) / 7, KY(k) / 7); } }
+for (const k0 of LAND) { if (IN[k0] < .42) continue; const w = dl(IN[k0], 2.5); const i0 = k0 % NX, j0 = Math.floor(k0 / NX);
+  for (let di = -6; di <= 26; di++) for (let dj = -12; dj <= 10; dj++) { const i = i0 + di, j = j0 + dj; if (i < 0 || j < 0 || i >= NX || j >= NY) continue;
+    const k = j * NX + i; if (!mask[k]) continue; const a = di * WD[0] - dj * WD[1], c = di * NRM[0] - dj * NRM[1];
+    if (a < -2 || a > 24 || Math.abs(c) > 7) continue; const sg = .7 + .14 * Math.max(a, 0);
+    const v = w * Math.exp(-c * c / (2 * sg * sg)) * (a >= 0 ? Math.exp(-a / 8) : Math.exp(-a * a / 1.5)); PLM[k] += v; PAG[k] += v * Math.max(a, 0); } }
+for (const k of LAND) { if (PLM[k] > 0) PAG[k] /= PLM[k]; PLM[k] = 1 - Math.exp(-.9 * PLM[k]); }
+function lv(k, t) { const r = ROADL[k], u = URBL[k], p = PLM[k]; if (r + u + p < .003) return 0;
+  const v = .75 * r * (.7 + .3 * Math.sin(t * 1.25 + RPH[k])) + .55 * u * (.9 + .1 * Math.sin(t * .4 + RPH[k] * .3))
+    + .9 * p * (.7 + .3 * Math.sin(6.283 * (PAG[k] / 6.5 - t * .55)));
+  return 1 - Math.exp(-2 * v); }
+// 광역 배경 — 북서가 높은 경사 + 바람 따라 흐르는 광역 덩어리 + 느린 잡음. 전지구 CTM·재분석처럼 거친 격자(25 km)에서만 정한다
+function bgF(x, y, t) {
+  const g0 = .13 + .2 * clamp(((D.x1 - x) / 370) * .55 + ((y - D.y0) / 600) * .45);
+  const s = (t * 9) % 620, cx = -20 + s * WD[0], cy = 760 + s * WD[1] - 150;
+  const dx = x - cx, dy = y - cy, a = dx * WD[0] + dy * WD[1], c = dx * NRM[0] + dy * NRM[1];
+  return g0 + .24 * Math.exp(-(a * a / (2 * 150 * 150) + c * c / (2 * 75 * 75))) + .12 * (vnoise((x - t * 6 * WD[0]) / 42, (y - t * 6 * WD[1]) / 42) - .5); }
+const BGK = 25, BGX = Math.ceil(NX / BGK) + 1, BGY = Math.ceil(NY / BGK) + 1;
+const BGB = new Int32Array(NN), BGS0 = new Int32Array(NN), BGFX = new Float32Array(NN), BGFY = new Float32Array(NN);
+for (const k of LAND) { const x = KX(k) - D.x0, y = KY(k) - D.y0; BGB[k] = Math.floor(y / BGK) * BGX + Math.floor(x / BGK);
+  const u = clamp(x / BGK - .5, 0, BGX - 1.001), v = clamp(y / BGK - .5, 0, BGY - 1.001), i = Math.floor(u), j = Math.floor(v);
+  BGS0[k] = j * BGX + i; BGFX[k] = u - i; BGFY[k] = v - j; }
+const BGV = new Float32Array(BGX * BGY); let bgT = NaN;
+function bgGrid(t) { if (t === bgT) return BGV; bgT = t; for (let j = 0; j < BGY; j++) for (let i = 0; i < BGX; i++) BGV[j * BGX + i] = bgF(D.x0 + (i + .5) * BGK, D.y0 + (j + .5) * BGK, t); return BGV; }
+const bgSm = (V, k) => { const i = BGS0[k], fx = BGFX[k], fy = BGFY[k]; return lerp(lerp(V[i], V[i + 1], fx), lerp(V[i + BGX], V[i + BGX + 1], fx), fy); };
+const truth = (b, l, f) => clamp(.9 * b * f + .62 * l + .15 * b * l);
+const LUT = (() => { const S = [[0, [30, 64, 175]], [.2, [6, 182, 212]], [.4, [52, 211, 153]], [.6, [250, 204, 21]], [.8, [251, 146, 60]], [1, [239, 68, 68]]];
+  const t = new Uint8Array(768); for (let k = 0; k < 256; k++) { const v = k / 255; let i = 1; while (i < S.length - 1 && v > S[i][0]) i++;
+    const [a, ca] = S[i - 1], [b, cb] = S[i], f = clamp((v - a) / (b - a)); for (let c = 0; c < 3; c++) t[k * 3 + c] = Math.round(lerp(ca[c], cb[c], f)); } return t; })();
+const rgb = v => { const k = (clamp(v) * 255) | 0; return `rgb(${LUT[k * 3]},${LUT[k * 3 + 1]},${LUT[k * 3 + 2]})`; };
+// 고정 시각의 국지 · 참값(1 km) · 5 km 블록 사전장 · 최근접 측정소 거리
+const TSTAR = 22, L1 = new Float32Array(NN), C1 = new Float32Array(NN), PRI = new Float32Array(NN);
+{ const V = bgGrid(TSTAR); for (const k of LAND) { L1[k] = lv(k, TSTAR); C1[k] = truth(bgSm(V, k), L1[k], LCF[k]); } }
+{ const blk = new Map();   // 5 km 블록마다 한 번만 계산한다(덱이 이 편을 미리 받는 동안 멎는 시간을 줄인다)
+  for (const k of LAND) { const i = k % NX, j = Math.floor(k / NX), bi = i - i % 5 + 2, bj = j - j % 5 + 2, key = bj * NX + bi;
+    let v = blk.get(key); if (v === undefined) { v = clamp(.9 * bgF(D.x0 + bi + .5, D.y1 - bj - .5, TSTAR) + .1); blk.set(key, v); } PRI[k] = v; } }
+const DIST = new Float32Array(NN).fill(1e9);
+for (const s of ST) { const k = cellOf(s.x, s.y); if (k >= 0) DIST[k] = 0; }
+for (let pass = 0; pass < 2; pass++) { const o = pass ? -1 : 1, js = pass ? NY - 1 : 0, je = pass ? -1 : NY, is0 = pass ? NX - 1 : 0, ie = pass ? -1 : NX;
+  for (let j = js; j !== je; j += o) for (let i = is0; i !== ie; i += o) { const k = j * NX + i; let v = DIST[k];
+    for (const [di, dj, w] of [[-o, 0, 1], [0, -o, 1], [-o, -o, 1.414], [o, -o, 1.414]]) { const ii = i + di, jj = j + dj;
+      if (ii >= 0 && jj >= 0 && ii < NX && jj < NY) v = Math.min(v, DIST[jj * NX + ii] + w); } DIST[k] = v; } }
+let DMAX = 0; for (const k of LAND) DMAX = Math.max(DMAX, DIST[k]);
+
+// 래스터 — 1 km(보간 없이 그리면 격자가 보인다) · 흐린 사본(연속장)
+function rasterFrom(vals, alphaFn) { const c = mkCanvas(NX, NY), x = c.getContext('2d'), im = x.createImageData(NX, NY), d = im.data;
+  for (const k of LAND) { const a = alphaFn ? alphaFn(k) : 1; if (a <= 0) continue; const q = (clamp(vals(k)) * 255) | 0, o = k * 4;
+    d[o] = LUT[q * 3]; d[o + 1] = LUT[q * 3 + 1]; d[o + 2] = LUT[q * 3 + 2]; d[o + 3] = 235 * a; }
+  x.putImageData(im, 0, 0); return c; }
+const C1S = landBlur(C1, 1), C1B = landBlur(C1, 6);
+const IM_AMR = rasterFrom(k => C1[k]), IM_OUT = rasterFrom(k => C1S[k]), IM_PRI = rasterFrom(k => PRI[k]);
+const IM_LOC = rasterFrom(k => L1[k], k => clamp((L1[k] - .03) * 3));
+// 토지피복 바탕 — 산림(짙은 초록) · 관목·초지 · 농경지(황록) · 도시(회청) · 습지
+const LC_RGBA = [null, [22, 101, 52, 150], [34, 84, 46, 135], [77, 94, 40, 120], [96, 88, 36, 125], [100, 116, 139, 160], [30, 64, 90, 120], [90, 80, 70, 110]];
+const IM_LC = (() => { const c = mkCanvas(NX, NY), x = c.getContext('2d'), im = x.createImageData(NX, NY);
+  for (const k of LAND) { const q = LC_RGBA[LCKIND(LCC[k])]; if (q) im.data.set(q, k * 4); } x.putImageData(im, 0, 0); return c; })();
+const DYN = mkCanvas(NX, NY), DYNX = DYN.getContext('2d'), DYNIM = DYNX.createImageData(NX, NY);
+function dynRaster(valFn, alphaFn) { const d = DYNIM.data; d.fill(0);
+  for (const k of LAND) { const a = alphaFn(k); if (a <= 0.004) continue; const q = (clamp(valFn(k)) * 255) | 0, o = k * 4;
+    d[o] = LUT[q * 3]; d[o + 1] = LUT[q * 3 + 1]; d[o + 2] = LUT[q * 3 + 2]; d[o + 3] = 235 * a; }
+  DYNX.putImageData(DYNIM, 0, 0); return DYN; }
+// 0단계 움직이는 장 — 참값(부드러운 배경 + 1 km 국지) · 거친 배경(25 km 블록) · 국지만. 1/15 s 마다만 다시 계산한다
+const ANI = {};
+function anim(mode, t) { let e = ANI[mode];
+  if (!e) { const cv = mkCanvas(NX, NY), x = cv.getContext('2d'); e = ANI[mode] = { cv, x, im: x.createImageData(NX, NY), t: -1 }; }
+  if (Math.abs(t - e.t) < 1 / 15) return e.cv; e.t = t;
+  const V = bgGrid(Math.round(t * 15) / 15), d = e.im.data;
+  for (const k of LAND) { const o = k * 4; let v, a;
+    if (mode === 'truth') { v = truth(bgSm(V, k), lv(k, t), LCF[k]); a = 110 + 145 * v; }
+    else if (mode === 'bg') { v = clamp((V[BGB[k]] - .1) * 1.7); a = 170 + 70 * v; }   // 거친 배경 — 대비를 늘려 25 km 블록이 보이게
+    else { v = lv(k, t); a = 255 * clamp((v - .03) * 3); if (a < 1) { d[o + 3] = 0; continue; } }   // 국지 — 배출이 적은 곳은 비워 토지피복이 비친다
+    const q = (clamp(v) * 255) | 0; d[o] = LUT[q * 3]; d[o + 1] = LUT[q * 3 + 1]; d[o + 2] = LUT[q * 3 + 2]; d[o + 3] = a; }
+  e.x.putImageData(e.im, 0, 0);
+  if (mode === 'truth') { if (!e.b) { e.b = mkCanvas(185, 300); e.bx = e.b.getContext('2d'); } e.bx.clearRect(0, 0, 185, 300); e.bx.filter = 'blur(2px)'; e.bx.drawImage(e.cv, 0, 0, 185, 300); e.bx.filter = 'none'; }
+  return e.cv; }
+
+// ═════════ 서울 초점 구조 (1 km 셀 · 5 km 광역 · 측정소) ═════════
+const BB = { x0: 150, x1: 270, y0: 540, y1: 668 };
+const inBB = (x, y, m = 0) => x >= BB.x0 - m && x <= BB.x1 + m && y >= BB.y0 - m && y <= BB.y1 + m;
+const REG = []; for (let x = BB.x0 + 2.5; x < BB.x1; x += 5) for (let y = BB.y0 + 2.5; y < BB.y1; y += 5) if (onLand(x, y)) REG.push({ x, y });
+const regKey = (x, y) => `${Math.floor(x / 5)}_${Math.floor(y / 5)}`;
+const REGM = new Map(REG.map(r => [regKey(r.x, r.y), r]));
+const REGE = []; for (const r of REG) for (const [dx, dy] of [[5, 0], [0, 5]]) { const o = REGM.get(regKey(r.x + dx, r.y + dy)); if (o) REGE.push([r, o]); }
+const STB = ST.filter(s => inBB(s.x, s.y, 8));
+const nearReg = (x, y) => REG.reduce((b, r) => (Math.hypot(r.x - x, r.y - y) < Math.hypot(b.x - x, b.y - y) ? r : b), REG[0]);
+const STE = STB.filter(s => inBB(s.x, s.y)).map(s => [s, nearReg(s.x, s.y)]);
+const R1 = rng(11);
+const CELLE = []; while (CELLE.length < 140) { const x = BB.x0 + R1() * (BB.x1 - BB.x0), y = BB.y0 + R1() * (BB.y1 - BB.y0);
+  if (onLand(x, y)) { const c = { x: Math.floor(x) + .5, y: Math.floor(y) + .5 }; const r = REGM.get(regKey(c.x, c.y)); if (r) CELLE.push([c, r]); } }
+// 어텐션 돋보기 — 서울 도심의 1 km 셀 하나
+const TGT = { x: 205.5, y: 605.5 };
+const ATT = (() => { const st = ST.map(s => ({ ...s, d: Math.hypot(s.x - TGT.x, s.y - TGT.y), kind: 's' })).sort((a, b) => a.d - b.d).slice(0, 4);
+  const rg = nearReg(TGT.x, TGT.y); const cells = [{ x: TGT.x - 1, y: TGT.y }, { x: TGT.x + 1, y: TGT.y }];
+  const nb = [...st, { ...rg, d: Math.hypot(rg.x - TGT.x, rg.y - TGT.y), kind: 'r' }, ...cells.map(c => ({ ...c, d: 1, kind: 'c' }))];
+  nb.forEach(n => { const ux = (TGT.x - n.x) / (n.d || 1), uy = (TGT.y - n.y) / (n.d || 1); n.e = -n.d / 3 + 1.1 * (ux * WD[0] + uy * WD[1]) + (n.kind === 'r' ? .4 : 0); });
+  const m = Math.max(...nb.map(n => n.e)), z = nb.reduce((a, n) => a + Math.exp(n.e - m), 0); nb.forEach(n => { n.a = Math.exp(n.e - m) / z; }); return nb; })();
+// FGNO 가림 측정소 · 임의 좌표 질의 (2D 대체 화면)
+const S5V = { cx: 212, cy: 598, vh: 140 };
+const MASKED = new Set(ST.map((s, i) => i).filter(i => Math.abs(ST[i].x - S5V.cx) < 80 && Math.abs(ST[i].y - S5V.cy) < 58 && i % 13 === 4));
+const QRY = [[188.3, 611.7], [223.9, 590.2], [247.1, 622.4], [201.6, 574.8], [169.2, 588.9], [236.4, 648.3], [259.2, 571.6]].filter(([x, y]) => onLand(x, y));
+const valAt = (x, y) => { const k = cellOf(x, y); return k >= 0 ? C1[k] : 0; };
+const sampleB = (x, y) => { const u = x - D.x0 - .5, v = D.y1 - y - .5, i = Math.floor(u), j = Math.floor(v), fx = u - i, fy = v - j;
+  const at = (ii, jj) => { const k = clamp(jj, 0, NY - 1) * NX + clamp(ii, 0, NX - 1); return C1B[k]; };
+  return lerp(lerp(at(i, j), at(i + 1, j), fx), lerp(at(i, j + 1), at(i + 1, j + 1), fx), fy); };
+// 0단계 국지 짚기 — CAPSS·토지피복에서 자리를 고른다(수도권)
+function pickCell(x0, x1, y0, y1, score) { let best = null, bs = -1e9;
+  for (let x = x0; x < x1; x++) for (let y = y0; y < y1; y++) { const k = cellOf(x + .5, y + .5); if (k < 0 || !mask[k]) continue; const s = score(k); if (s > bs) { bs = s; best = { x: x + .5, y: y + .5 }; } }
+  return best || { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }; }
+const LBL = [
+  { s: '도로 — 교통(이동오염원)', col: '#fde047', p: pickCell(208, 236, 560, 590, k => RD[k] - .9 * UR[k]), off: [70, 58] },
+  { s: '도시 — 난방·생활(면오염원)', col: '#f9a8d4', p: pickCell(198, 214, 600, 614, k => URBL[k]), off: [-40, -88] },
+  { s: '산업·발전 — 굴뚝 플룸(점오염원)', col: '#fb923c', p: pickCell(165, 200, 560, 596, k => IN[k] + .3 * PLM[k]), off: [-150, 62] },
+  { s: '산림 — 배출이 거의 없다', col: '#86efac', p: pickCell(222, 258, 612, 648, k => (LCKIND(LCC[k]) === 1 ? 1 : 0) - RD[k] - UR[k] - IN[k]), off: [92, -64] },
+];
+
+// ═════════ 그리기 도구 ═════════
+const cv = $('cv'), g0 = cv.getContext('2d'), hudCv = $('hud'), hx = hudCv.getContext('2d');
+let g = g0;   // 그리기 대상 — 캐시 층을 그릴 때 잠시 바꿔 낀다
+let W = 0, H = 0, DPR = 1, HA = 1;   // HA — 글자 층 투명도(2D·3D 가 겹쳐 바뀌는 동안 각자의 글자를 제 비중만큼)
+function resize() { const r = $('map-wrap').getBoundingClientRect(); W = r.width; H = r.height; DPR = Math.min(1.5, window.devicePixelRatio || 1);
+  cv.width = hudCv.width = Math.round(W * DPR); cv.height = hudCv.height = Math.round(H * DPR); if (G3) G3.size(W, H, DPR); }
+let PAL;
+function palette() { const dark = document.body.dataset.theme === 'dark';
+  PAL = dark ? { bg: '#060c1a', sea: '#050a16', land: '#0f1929', sig: 'rgba(56,90,140,.55)', casing: 'rgba(2,6,23,.65)', border: 'rgba(241,245,249,.85)', grid: 'rgba(148,163,184,.55)', text: '#e2e8f0' }
+    : { bg: '#f8fafc', sea: '#eef2f7', land: '#e2e8f0', sig: 'rgba(148,163,184,.8)', casing: 'rgba(255,255,255,.8)', border: '#334155', grid: 'rgba(51,65,85,.45)', text: '#1e293b' }; }
+const setScr = () => g.setTransform(DPR, 0, 0, DPR, 0, 0);
+function setKm(v, c) { const s = v.h / c.vh; g.setTransform(DPR * s, 0, 0, -DPR * s, DPR * (v.x + v.w / 2 - c.cx * s), DPR * (v.y + v.h / 2 + c.cy * s)); return s; }
+const toScr = (v, c, x, y) => { const s = v.h / c.vh; return [v.x + v.w / 2 + (x - c.cx) * s, v.y + v.h / 2 - (y - c.cy) * s]; };
+function drawRaster(v, c, img, smoothOn, a = 1) { const [x0, y0] = toScr(v, c, D.x0, D.y1), [x1, y1] = toScr(v, c, D.x1, D.y0);
+  setScr(); g.imageSmoothingEnabled = smoothOn; g.globalAlpha = a; g.drawImage(img, x0, y0, x1 - x0, y1 - y0); g.globalAlpha = 1; g.imageSmoothingEnabled = true; }
+const LAYER = new Map();
+function cached(name, v, c, fn) { const id = `${name}|${v.x}|${v.w}`, key = `${v.w}|${v.h}|${c.cx.toFixed(3)}|${c.cy.toFixed(3)}|${c.vh.toFixed(4)}|${document.body.dataset.theme}|${cv.width}x${cv.height}`;
+  let e = LAYER.get(id); if (!e) { e = { key: '', cv: mkCanvas(1, 1) }; LAYER.set(id, e); }
+  if (e.key !== key) { e.cv.width = cv.width; e.cv.height = cv.height; const keep = g; g = e.cv.getContext('2d'); fn(); g = keep; e.key = key; }
+  g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(e.cv, 0, 0); }
+function drawBase(v, c, a = 1) { g.globalAlpha = a; cached('base', v, c, () => { const s = setKm(v, c); g.fillStyle = PAL.land; g.fill(CTP); g.lineWidth = .6 / s; g.strokeStyle = PAL.sig; g.stroke(SIG); }); g.globalAlpha = 1; }
+function drawBorders(v, c, a = 1) { g.globalAlpha = a; cached('border', v, c, () => { const s = setKm(v, c); g.lineJoin = 'round'; g.lineWidth = 2.6 / s; g.strokeStyle = PAL.casing; g.stroke(CTP);
+  g.lineWidth = 1.1 / s; g.strokeStyle = PAL.border; g.stroke(CTP); }); g.globalAlpha = 1; }
+function drawGridLines(v, c, a) { const s = v.h / c.vh; a *= clamp((s - 3.5) / 7); if (a < .01) return; setKm(v, c);
+  const hw = v.w / 2 / s, hh = v.h / 2 / s, x0 = Math.max(D.x0, Math.floor(c.cx - hw)), x1 = Math.min(D.x1, Math.ceil(c.cx + hw)),
+    y0 = Math.max(D.y0, Math.floor(c.cy - hh)), y1 = Math.min(D.y1, Math.ceil(c.cy + hh));
+  if (x1 - x0 > 420) return; g.save(); g.clip(CTP); g.beginPath();
+  for (let x = x0; x <= x1; x++) { g.moveTo(x, y0); g.lineTo(x, y1); } for (let y = y0; y <= y1; y++) { g.moveTo(x0, y); g.lineTo(x1, y); }
+  g.lineWidth = 1 / s; g.strokeStyle = PAL.grid; g.globalAlpha = a; g.stroke(); g.restore(); g.globalAlpha = 1; }
+function drawBlockGrid(v, c, a) { if (a < .01) return; const s = setKm(v, c); g.save(); g.clip(CTP); g.beginPath();   // 거친 배경 격자(25 km)
+  for (let x = D.x0; x <= D.x1; x += BGK) { g.moveTo(x, D.y0); g.lineTo(x, D.y1); } for (let y = D.y0; y <= D.y1; y += BGK) { g.moveTo(D.x0, y); g.lineTo(D.x1, y); }
+  g.lineWidth = 1.2 / s; g.strokeStyle = 'rgba(253,230,138,.55)'; g.globalAlpha = a; g.stroke(); g.restore(); g.globalAlpha = 1; }
+function sprite(r, gc, b) { const c = mkCanvas(64, 64), x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.2, `rgba(${r},${gc},${b},1)`); gr.addColorStop(.5, `rgba(${r},${gc},${b},.28)`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return c; }
+const SP = { pink: sprite(255, 95, 180), amber: sprite(251, 191, 36), cyan: sprite(56, 189, 248), violet: sprite(167, 139, 250), green: sprite(52, 211, 153), white: sprite(255, 255, 255), red: sprite(248, 113, 113) };
+function glow(v, c, x, y, rpx, sp, a = 1) { const [sx, sy] = toScr(v, c, x, y); if (sx < v.x - 40 || sx > v.x + v.w + 40 || sy < v.y - 40 || sy > v.y + v.h + 40) return;
+  setScr(); g.globalAlpha = a; g.drawImage(sp, sx - rpx, sy - rpx, 2 * rpx, 2 * rpx); g.globalAlpha = 1; }
+function line(v, c, a, b, col, wpx, al) { const [x0, y0] = toScr(v, c, a.x, a.y), [x1, y1] = toScr(v, c, b.x, b.y); setScr();
+  g.globalAlpha = al; g.strokeStyle = col; g.lineWidth = wpx; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.globalAlpha = 1; }
+// 글자는 모두 위 글자 층(#hud)에 쓴다 — 3D 층 위에도 보이게
+function sText(s, x, y, col, size, a = 1, weight = 700, align = 'center') { a *= HA; if (a < .01) return; hx.setTransform(DPR, 0, 0, DPR, 0, 0); hx.globalAlpha = a;
+  hx.font = `${weight} ${size}px 'Noto Sans KR','Inter',sans-serif`; hx.textAlign = align; hx.textBaseline = 'middle';
+  hx.lineWidth = 3; hx.strokeStyle = 'rgba(2,6,23,.8)'; hx.strokeText(s, x, y); hx.fillStyle = col; hx.fillText(s, x, y); hx.globalAlpha = 1; }
+function hLabel(s, x, y, col, size, a, align = 'left') { hx.font = `700 ${size}px 'Noto Sans KR','Inter',sans-serif`; const w = hx.measureText(s).width + 16, x0 = align === 'left' ? x - 8 : align === 'right' ? x - w + 8 : x - w / 2;
+  hBox(x0, y - size * .9, w, size * 1.8, col, a * .9); sText(s, x, y, col, size, a, 700, align); }
+function hBox(x, y, w, h, col, a) { a *= HA; if (a < .01) return; hx.setTransform(DPR, 0, 0, DPR, 0, 0); hx.globalAlpha = a; hx.fillStyle = 'rgba(6,11,24,.84)';
+  hx.beginPath(); hx.roundRect(x, y, w, h, 10); hx.fill(); hx.strokeStyle = col; hx.lineWidth = 1.4; hx.stroke(); hx.globalAlpha = 1; }
+function hLine(x0, y0, x1, y1, col, w, a) { a *= HA; if (a < .01) return; hx.setTransform(DPR, 0, 0, DPR, 0, 0); hx.globalAlpha = a; hx.strokeStyle = col; hx.lineWidth = w;
+  hx.beginPath(); hx.moveTo(x0, y0); hx.lineTo(x1, y1); hx.stroke(); hx.globalAlpha = 1; }
+function hDot(x, y, r, col, a, stroke = false) { a *= HA; if (a < .01) return; hx.setTransform(DPR, 0, 0, DPR, 0, 0); hx.globalAlpha = a; hx.beginPath(); hx.arc(x, y, r, 0, 6.29);
+  if (stroke) { hx.strokeStyle = col; hx.lineWidth = 1.6; hx.stroke(); } else { hx.fillStyle = col; hx.fill(); } hx.globalAlpha = 1; }
+// 바람 입자 — 시각 t 의 닫힌 식(되감기해도 같은 자리)
+const PARTS = (() => { const r = rng(88); return Array.from({ length: 1400 }, () => ({ a: r() * 700, c: -300 + r() * 620, sp: .75 + .5 * r(), ph: r() * 6.28 })); })();
+function partPos(p, t) { const a = ((p.a + t * 14 * p.sp) % 700 + 700) % 700 - 60, c = p.c + 7 * Math.sin((p.a + t * 14 * p.sp) / 55 + p.ph);
+  return [D.x0 - 40 + a * WD[0] + c * NRM[0], 560 + a * WD[1] + c * NRM[1]]; }
+function drawParticles(v, c, t, al) { if (al < .01) return; setScr(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.strokeStyle = '#bae6fd'; g.lineWidth = 1.2;
+  const sc = v.h / c.vh, step = clamp(7 / (14 * sc), .05, .5), N = 6;   // 꼬리 한 마디 ≈ 7 px
+  const P = PARTS.map(p => { const q = []; for (let k = 0; k < N; k++) { const [x, y] = partPos(p, t - k * step); q.push(toScr(v, c, x, y)); } return q; });
+  for (let k = 1; k < N; k++) { g.globalAlpha = al * (1 - k / N) * .5; g.beginPath();   // 마디 순번마다 한 번에 긋는다(1,400개 × 5 → 5번)
+    for (const q of P) { const a = q[k - 1], b = q[k]; if (a[0] < v.x - 10 || a[0] > v.x + v.w + 10) continue; if (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) < 40) { g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); } } g.stroke(); }
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
+// 푸리에 모드 — 장 전체에 겹친 옅은 물결 띠(개념). 격자선처럼 보이지 않게 부드러운 사인 띠로 그린다
+function ripples(v, c, t, a) { if (a < .01) return; const s = v.h / c.vh, cx = v.x + v.w / 2, cy = v.y + v.h / 2, half = Math.hypot(v.w, v.h) / 2;
+  setKm(v, c); g.save(); g.clip(CTP); setScr(); g.globalCompositeOperation = 'lighter';
+  [[36, .45, [125, 211, 252]], [18, 1.35, [196, 181, 253]], [11, 2.5, [249, 168, 212]]].forEach(([lam, ang, [r, gg, b]], i) => {
+    const dx = Math.cos(ang), dy = -Math.sin(ang), lp = lam * s, ph = ((t * (5 + 3 * i)) * s) % lp;
+    const gr = g.createLinearGradient(cx - dx * (half + ph), cy - dy * (half + ph), cx + dx * (half - ph), cy + dy * (half - ph));
+    const n = Math.min(240, Math.ceil(2 * half / lp * 6));
+    for (let k = 0; k <= n; k++) { const f = k / n, w = .5 + .5 * Math.cos(2 * Math.PI * f * 2 * half / lp); gr.addColorStop(f, `rgba(${r},${gg},${b},${(w * w * .16 * a).toFixed(3)})`); }
+    g.fillStyle = gr; g.fillRect(v.x, v.y, v.w, v.h); });
+  g.restore(); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+const HEAD = 34, SUBL = 62;   // 지도 위 제목 줄 · 보조 줄 (화면 px)
+
+// ═════════ 카메라 (2D) ═════════
+const FULL = { cx: 268, cy: 405, vh: 670 }, SEOUL = { cx: 210, cy: 604, vh: 80 }, GANG = { cx: 318, cy: 575, vh: 64 };
+const CAPT = { cx: 208, cy: 592, vh: 118 }, SPLITC = { cx: 265, cy: 410, vh: 700 }, FG5 = { cx: 210, cy: 604, vh: 150 };
+const lerpCam = (a, b, t) => ({ cx: lerp(a.cx, b.cx, t), cy: lerp(a.cy, b.cy, t), vh: Math.exp(lerp(Math.log(a.vh), Math.log(b.vh), t)) });
+const fitVh = () => Math.max(245, 370 * H / Math.max(1, W));   // 권역 상자 하나(동서 350 km · 남북 160 km)가 여백을 두고 들어오는 높이
+const DCAM = [() => ({ cx: 265, cy: 612, vh: fitVh() }), () => ({ cx: 265, cy: 456, vh: fitVh() }), () => ({ cx: 262, cy: 296, vh: fitVh() }), () => ({ cx: 166, cy: 140, vh: 120 })];
+function keyCam(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const [t0, a] = keys[i], [t1, b] = keys[i + 1];
+  return lerpCam(typeof a === 'function' ? a() : a, typeof b === 'function' ? b() : b, smooth((t - t0) / Math.max(.001, t1 - t0))); }
+function camTarget(p, t) {
+  if (p === 0) { const tL = along(0, 1, .405), c2 = cue(0, 2); return lerpCam(FULL, CAPT, ramp(t, tL + .1, 1.8) * (1 - ramp(t, c2 - .3, 1.3))); }
+  if (p === 1 || p === 6) return SEOUL;
+  if (p === 2) return lerpCam(SEOUL, { cx: TGT.x + .6, cy: TGT.y, vh: 11 }, ramp(t, cue(2, 3) - .2, 1.8));
+  if (p === 3) { const P = P3PLAN.dom; return keyCam([[0, FULL], [P[0].a - 1.4, FULL], [P[0].a, DCAM[0]], [P[0].b, DCAM[0]], [P[1].a, DCAM[1]], [P[1].b, DCAM[1]],
+    [P[2].a, DCAM[2]], [P[2].b, DCAM[2]], [P[3].a, DCAM[3]], [P[3].b + .2, DCAM[3]], [P[3].b + 1.6, FULL], [1e9, FULL]], t); }
+  if (p === 4) return lerpCam(FULL, GANG, ramp(t, LEAD + NDUR[4] * .55, 1.8));
+  return FG5;
+}
+function camAt(p, t) { if (p === 0 || t >= TRANS) return camTarget(p, t); return lerpCam(camTarget(p - 1, DUR[p - 1]), camTarget(p, t), smooth(t / TRANS)); }
+let userCam = null;
+function cam(p, t) { return userCam || camAt(p, t); }
+
+// ═════════ 2D 층과 3D 층의 비중 ═════════
+function mix3(p, t) { if (!G3) return 0;
+  if (p === 1) return ramp(t, cue(1, 1) - .2, 1.4);
+  if (p === 2) return 1 - ramp(t, cue(2, 3) - 1.1, 1);
+  if (p === 5) return ramp(t, 1.6, 1.2);
+  if (p === 6) return 1;
+  return 0; }
+
+// ═════════ 단계별 그림 (2D) ═════════
+const FULLV = () => ({ x: 0, y: 0, w: W, h: H });
+function stationDot(v, c, s, a, col, r = 2.6) { const [sx, sy] = toScr(v, c, s.x, s.y); setScr(); g.globalAlpha = a; g.fillStyle = col; g.beginPath(); g.arc(sx, sy, r, 0, 6.29); g.fill(); g.globalAlpha = 1; }
+function pulses(v, c, edges, t, rate, a, sp, rpx, rev) { if (a < .01) return;
+  edges.forEach(([p, q], i) => { const f = (t * rate + i * .137) % 1, u = rev ? 1 - f : f; glow(v, c, lerp(p.x, q.x, u), lerp(p.y, q.y, u), rpx, sp, a * Math.sin(Math.PI * f)); }); }
+function lcLegend(a) { if (a < .01) return; const x = 18, y = H - 34; [['산림', LC_RGBA[1]], ['농경지', LC_RGBA[4]], ['도시', LC_RGBA[5]]].forEach(([s, q], i) => {
+    const px = x + i * 74; hx.setTransform(DPR, 0, 0, DPR, 0, 0); hx.globalAlpha = a * HA; hx.fillStyle = `rgb(${q[0] * 1.6},${q[1] * 1.6},${q[2] * 1.6})`; hx.fillRect(px, y - 6, 12, 12); hx.globalAlpha = 1;
+    sText(s, px + 18, y, '#cbd5e1', 12.5, a, 600, 'left'); });
+  sText('토지피복 (MODIS) — 바탕', x, y - 22, '#94a3b8', 11.5, a, 500, 'left'); }
+
+function P0(t) { const v = FULLV(), c = cam(0, t);
+  const c1 = cue(0, 1), c2 = cue(0, 2), c3 = cue(0, 3), tL = along(0, 1, .405), tL2 = along(0, 2, .515);
+  const bgO = win(t, c1 + .1, tL + .5, .9, .9), loO = win(t, tL, c2 + .5, .9, .9), sp = win(t, c2 + .2, c3 - .1, 1, 1.1);
+  const comb = clamp(1 - Math.max(bgO, loO, sp)), dim = 1 - .75 * ramp(t, c3, 1.4);
+  drawBase(v, c, 1 - sp);
+  if (comb > .01) { const img = anim('truth', t); drawRaster(v, c, img, true, comb * dim);
+    setScr(); g.globalCompositeOperation = 'lighter'; drawRaster(v, c, ANI.truth.b, true, .3 * comb * dim); g.globalCompositeOperation = 'source-over'; }
+  // 거친 광역 배경 — 전지구 CTM·재분석처럼 수십 km 격자
+  if (bgO > .01) { drawRaster(v, c, anim('bg', t), false, .95 * bgO); drawBlockGrid(v, c, .7 * bgO); }
+  // 세밀한 국지 — CAPSS 1 km 배출 · 토지피복
+  if (loO > .01) { drawRaster(v, c, IM_LC, false, loO); drawRaster(v, c, anim('local', t), false, loO); }
+  drawParticles(v, c, t, .85 * (comb * (1 - .6 * ramp(t, c3, 1.4)) + bgO * 1.1 + .25 * loO));
+  drawBorders(v, c, .9 * (1 - sp));
+  // 두 규모를 좌우로 나란히 — 왼쪽 거친 광역 배경, 오른쪽 세밀한 국지
+  if (sp > .01) { const L = { x: 0, y: 0, w: W / 2, h: H }, R = { x: W / 2, y: 0, w: W / 2, h: H }, rA = sp * ramp(t, tL2 - .3, 1);
+    g.save(); setScr(); g.beginPath(); g.rect(0, 0, W / 2, H); g.clip(); drawBase(L, SPLITC, sp);
+    drawRaster(L, SPLITC, anim('bg', t), false, .95 * sp); drawBlockGrid(L, SPLITC, .7 * sp); drawParticles(L, SPLITC, t, .9 * sp); drawBorders(L, SPLITC, .9 * sp); g.restore();
+    g.save(); setScr(); g.beginPath(); g.rect(W / 2, 0, W / 2, H); g.clip(); drawBase(R, SPLITC, sp);
+    drawRaster(R, SPLITC, IM_LC, false, rA); drawRaster(R, SPLITC, anim('local', t), false, rA);
+    drawBorders(R, SPLITC, .9 * sp); g.restore();
+    hLine(W / 2, 0, W / 2, H, '#e0e7ff', 1.6, .7 * sp);
+    const bw = Math.min(330, W / 2 - 40), lx = Math.max(180, W / 4 - bw / 2), rx = 3 * W / 4 - bw / 2;
+    hBox(lx, 16, bw, 92, 'rgba(253,230,138,.6)', sp);
+    sText('광역 배경 — 거친 격자 (수십 km)', lx + 16, 38, '#fde68a', 16, sp, 800, 'left');
+    sText('전지구 화학수송모델 (GEOS-CF · CAMS)', lx + 16, 64, '#e2e8f0', 13.5, sp * ramp(t, along(0, 2, .06), .6), 600, 'left');
+    sText('3차원 기상장 (ERA5 재분석) · 편서풍 수송', lx + 16, 86, '#e2e8f0', 13.5, sp * ramp(t, along(0, 2, .28), .6), 600, 'left');
+    hBox(rx, 16, bw, 92, 'rgba(249,168,212,.6)', rA);
+    sText('국지 — 세밀한 1 km', rx + 16, 38, '#f9a8d4', 16, rA, 800, 'left');
+    sText('CAPSS 배출량 — 도로 · 도시 · 산업', rx + 16, 64, '#e2e8f0', 13.5, rA * ramp(t, along(0, 2, .6), .6), 600, 'left');
+    sText('토지피복 (MODIS) · 지형 — 산림 · 농경지 · 도시', rx + 16, 86, '#e2e8f0', 13.5, rA * ramp(t, along(0, 2, .78), .6), 600, 'left'); }
+  // 광역 배경만 — 편서풍 · 수백 km
+  if (bgO > .01) { const [bx, by] = toScr(v, c, 150, 632); setScr(); g.globalAlpha = bgO * .9; g.strokeStyle = '#fde68a'; g.lineWidth = 2; g.setLineDash([6, 6]);
+    g.beginPath(); g.ellipse(bx, by, 150, 70, -.26, 0, 6.29); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+    sText('광역 배경 — 편서풍을 타고 수백 km · 거친 농도', W / 2, HEAD, '#fde68a', 21, bgO); }
+  // 국지만 — CAPSS 가 짚어 주는 도로 · 도시 · 산업 · 산림
+  if (loO > .01) { sText('국지 오염 — 1 km 마다 다르다 (CAPSS 배출 · 토지피복)', W / 2, HEAD, '#fda4af', 21, loO);
+    LBL.forEach((L, i) => { const a = loO * ramp(t, tL + 1.3 + .45 * i, .6); if (a < .01) return; const [sx, sy] = toScr(v, c, L.p.x, L.p.y), tx = sx + L.off[0], ty = sy + L.off[1];
+      hDot(sx, sy, 7, L.col, a, true); hDot(sx, sy, 2.4, L.col, a); hLine(sx, sy, tx, ty, L.col, 1.3, a * .8);
+      hLabel(L.s, tx + (L.off[0] > 0 ? 6 : -6), ty, L.col, 14, a, L.off[0] > 0 ? 'left' : 'right'); });
+    lcLegend(loO); }
+  const sa = ramp(t, c3, 1.0);
+  if (sa > .01) for (const s of ST) { const k = cellOf(s.x, s.y); glow(v, c, s.x, s.y, 8, SP.white, sa * .3); stationDot(v, c, s, sa, rgb(k >= 0 ? C1[k] : .3)); }
+  if (sa > .01) sText('정답 = 측정소 664곳의 점 관측', W / 2, HEAD, '#fbcfe8', 20, sa);
+}
+function gridScene(v, c, t, o) {   // 1·2·6단계 공통 — 서울 초점의 1 km 셀 · 5 km 광역 · 측정소
+  drawBase(v, c);
+  const s = v.h / c.vh;
+  if (o.field > .01) drawRaster(v, c, o.fieldImg || IM_AMR, false, o.field);
+  if (o.cells > .01) { setKm(v, c); g.save(); g.clip(CTP); g.globalAlpha = .12 * o.cells; g.fillStyle = '#38bdf8';
+    g.fillRect(BB.x0 - 60, BB.y0 - 60, (BB.x1 - BB.x0 + 120) * o.cells, BB.y1 - BB.y0 + 120); g.restore(); g.globalAlpha = 1; }
+  drawGridLines(v, c, o.cells);
+  drawBorders(v, c, .8);
+  if (o.reg > .01) { for (const [a, b] of REGE) line(v, c, a, b, '#f59e0b', 1.1, .42 * o.reg);
+    for (const r of REG) { const [sx, sy] = toScr(v, c, r.x, r.y); setScr(); g.globalAlpha = o.reg; g.fillStyle = '#fbbf24'; g.save(); g.translate(sx, sy); g.rotate(Math.PI / 4);
+      const q = Math.max(3, Math.min(6, s * .9)); g.fillRect(-q / 2, -q / 2, q, q); g.restore(); } g.globalAlpha = 1; }
+  if (o.st > .01) { for (const [st, r] of STE) line(v, c, st, r, '#c4b5fd', 1.1, .55 * o.st); for (const st of STB) glow(v, c, st.x, st.y, 7, SP.pink, o.st); }
+}
+function legend3(a) { if (a < .01) return; const x = 24; [['●  측정소', '#f9a8d4'], ['◆  5 km 광역', '#fde68a'], ['□  1 km 격자', '#7dd3fc']].forEach(([s, col], i) => sText(s, x, 26 + i * 26, col, 15, a, 700, 'left')); }
+function P1(t) { const v = FULLV(), c = cam(1, t);
+  const cells = ramp(t, cue(1, 0) + .8, 2.2), reg = ramp(t, cue(1, 1), 1.4), st = ramp(t, cue(1, 1) + 1.8, 1.2);
+  gridScene(v, c, t, { field: .45 * ramp(t, cue(1, 0) + 1.6, 2), cells, reg, st });
+  if (!G3) legend3(ramp(t, cue(1, 1) + 3, 1));
+  const ka = ramp(t, cue(1, 2), 1), ca = win(t, cue(1, 0) + .8, cue(1, 1), .6, .4);
+  if (ca > .01) sText('한반도 → 1 km × 1 km 격자', W / 2, HEAD, '#7dd3fc', 22, ca);
+  if (ka > .01) sText('AMR-HGN 의 뼈대 — 이종 그래프', W / 2, HEAD, '#fde68a', 22, ka);
+}
+function P2(t) { const v = FULLV(), c = cam(2, t);
+  const c0 = cue(2, 0), c1 = cue(2, 1), c2 = cue(2, 2), c3 = cue(2, 3), c4 = cue(2, 4), dn0 = lerp(c1, c2, .5);
+  const bgA = ramp(t, c2, 1), locA = ramp(t, c2 + 1.8, 1), fuse = ramp(t, c2 + 3.6, 1.6), att = ramp(t, c3, 1.2);
+  gridScene(v, c, t, { field: 0, cells: 1, reg: (1 - .55 * fuse) * (1 - .5 * att), st: 1 - .5 * att });
+  // 잠재공간 융합 — 넓은 배경(5 km 블록) + 좁은 국지(CAPSS 1 km) → 하나의 1 km 장
+  const fa = 1 - .45 * att;
+  if (bgA > .01) drawRaster(v, c, IM_PRI, false, .75 * bgA * (1 - fuse) * fa);
+  if (locA > .01) { setScr(); g.globalCompositeOperation = 'lighter'; drawRaster(v, c, IM_LOC, false, .8 * locA * (1 - fuse) * fa); g.globalCompositeOperation = 'source-over'; }
+  if (fuse > .01) drawRaster(v, c, IM_AMR, false, .85 * fuse * fa);
+  if (bgA > .01 || fuse > .01) drawGridLines(v, c, .6);
+  // 메시지 — 모으기(격자 → 광역·측정소) → 퍼뜨리기(→ 모든 격자)
+  const pa = win(t, c0 + .3, c2 + 1.2, .6, .8) * (1 - att), down = t > dn0;
+  if (pa > .01) { setScr(); g.globalCompositeOperation = 'lighter';
+    pulses(v, c, CELLE, t, .75, pa, down ? SP.cyan : SP.amber, 7, down);
+    pulses(v, c, STE.map(([s, r]) => [r, s]), t, .6, pa, down ? SP.cyan : SP.pink, 8, !down);
+    g.globalCompositeOperation = 'source-over';
+    if (down) for (const r of REG) { const w = ((t - dn0) * .8 + (r.x + r.y) * .013) % 1; const [sx, sy] = toScr(v, c, r.x, r.y); setScr();
+      g.globalAlpha = (1 - w) * .35 * pa; g.strokeStyle = '#7dd3fc'; g.lineWidth = 1.4; g.beginPath(); g.arc(sx, sy, 3 + 26 * w, 0, 6.29); g.stroke(); }
+    g.globalAlpha = 1; }
+  const hd = t < c1 ? ['그래프 위로 정보가 흐른다', '#e2e8f0'] : t < dn0 ? ['모으기 — 격자 → 광역 · 측정소', '#fde68a'] : t < c2 ? ['퍼뜨리기 — 다시 모든 격자로', '#7dd3fc']
+    : t < c2 + 1.8 ? ['넓은 배경 — 5 km 광역', '#fde68a'] : t < c2 + 3.6 ? ['+ 좁은 국지 — 1 km 격자', '#fda4af'] : ['→ 하나의 잠재공간에서 섞인다', '#c4b5fd'];
+  if (att < .99 && !G3) sText(hd[0], W / 2, HEAD, hd[1], 22, ramp(t, c0, .6) * (1 - att));   // 3D 가 있으면 제목은 3D 쪽이 쓴다
+  // 어텐션 돋보기 — 이웃마다 다른 가중치(바람 정렬 가정, 개념)
+  if (att > .01) { const sharp = ramp(t, c4, 1.6), s = v.h / c.vh;
+    const [tx, ty] = toScr(v, c, TGT.x, TGT.y); setScr(); g.globalAlpha = att; g.strokeStyle = '#fde68a'; g.lineWidth = 3;
+    g.strokeRect(tx - s / 2, ty - s / 2, s, s); g.fillStyle = 'rgba(253,230,138,.16)'; g.fillRect(tx - s / 2, ty - s / 2, s, s);
+    const al = ATT.map(n => lerp(1 / ATT.length, n.a, sharp));
+    ATT.forEach((n, i) => { line(v, c, n, TGT, '#fde68a', 1.5 + 20 * al[i], att * (.3 + .7 * Math.sqrt(al[i])));
+      const f = (t * .8 + i * .19) % 1; glow(v, c, lerp(n.x, TGT.x, f), lerp(n.y, TGT.y, f), 4 + 12 * al[i], SP.white, att * Math.sin(Math.PI * f));
+      const [nx, ny] = toScr(v, c, n.x, n.y);
+      if (n.kind === 'c') { setScr(); g.globalAlpha = att; g.strokeStyle = '#7dd3fc'; g.lineWidth = 2; g.strokeRect(nx - s / 2, ny - s / 2, s, s); g.globalAlpha = 1; }
+      else glow(v, c, n.x, n.y, 11, n.kind === 's' ? SP.pink : SP.amber, att);
+      sText(`α ${al[i].toFixed(2)}`, nx, ny - 20, '#fef3c7', 15, att * ramp(t, c4, .6)); });
+    sText('어텐션 — 더 중요한 이웃에 더 큰 가중치', W / 2, HEAD, '#fde68a', 22, att);
+    sText('개념 시각화 — 바람 방향에 맞춘다고 가정. 실제 가중치는 모델이 스스로 배운다', W / 2, SUBL, '#cbd5e1', 13, att * ramp(t, c4, .6), 500); }
+}
+// 3단계 — 권역 d 의 학습 진행(0–1). 되풀이 K 번이 계단처럼 오르고, 전이된 권역은 s0 에서 시작한다
+function p3Lam(d, t) { const s = P3PLAN.dom[d]; if (t < s.a) return 0; const base = s.s0 * ramp(t, s.a, .35);
+  if (t >= s.b) return 1; const q = s.K * (t - s.a) / (s.b - s.a), i = Math.floor(q), fr = q - i; return base + (1 - s.s0) * (i + smooth(fr / .55)) / s.K; }
+function p3Iter(d, t) { const s = P3PLAN.dom[d]; if (t < s.a || t >= s.b) return null; const q = s.K * (t - s.a) / (s.b - s.a); return { i: Math.floor(q), fr: q - Math.floor(q), K: s.K }; }
+const cellLam = (lam, k) => clamp((lam - .3 * clamp(DIST[k] / 25)) / .7);
+function P3(t) { const v = FULLV(), c = cam(3, t), P = P3PLAN.dom;
+  const c1 = cue(3, 1), rev = ramp(t, cue(3, 0), 1.5), lam = [0, 1, 2, 3].map(d => p3Lam(d, t));
+  const cur = P.findIndex(s => t >= s.a && t < s.b), tr = P.findIndex(s => s.d > 0 && t >= s.x && t < s.a), done = t >= P3PLAN.end;
+  drawBase(v, c);
+  const img = dynRaster(k => lerp(PRI[k], C1[k], cellLam(lam[DOMK[k]], k)), () => rev); drawRaster(v, c, img, false, .97);
+  drawGridLines(v, c, .5); drawBorders(v, c, .9);
+  // 권역 상자 — 지금 배우는 곳은 굵게, 끝난 곳은 ✓
+  SUB.forEach((d, i) => { const on = i === cur || i === tr ? 1 : lam[i] >= 1 ? .55 : .25, [x0, y0] = toScr(v, c, d.x0, d.y1), [x1, y1] = toScr(v, c, d.x1, d.y0);
+    setScr(); g.globalAlpha = on * rev; g.setLineDash([8, 5]); g.strokeStyle = d.c; g.lineWidth = i === cur ? 3 : 1.3; g.strokeRect(x0, y0, x1 - x0, y1 - y0); g.setLineDash([]); g.globalAlpha = 1;
+    sText(d.ko + (lam[i] >= 1 ? ' ✓' : ''), x0 + 10, y0 + 16, d.c, i === cur ? 17 : 14, on * rev, 800, 'left'); });
+  // 되풀이 한 번 = 측정소 오차 → 고침이 물결처럼 번진다
+  const it = cur >= 0 ? p3Iter(cur, t) : null;
+  if (it) { setScr(); g.globalCompositeOperation = 'lighter'; const s = v.h / c.vh;
+    ST.forEach((st, i) => { if (i % 3 || domOf(st.x, st.y) !== cur) return; const [sx, sy] = toScr(v, c, st.x, st.y); if (sx < -40 || sx > W + 40 || sy < -40 || sy > H + 40) return;
+      g.globalAlpha = (1 - it.fr) * .38; g.strokeStyle = '#7dd3fc'; g.lineWidth = 1.1; g.beginPath(); g.arc(sx, sy, 2 + it.fr * 22 * s, 0, 6.29); g.stroke(); });
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
+  for (const s of ST) { const k = cellOf(s.x, s.y); if (k < 0) continue; const l = cellLam(lam[domOf(s.x, s.y)], k), err = Math.abs(C1[k] - PRI[k]) * (1 - l);
+    const [sx, sy] = toScr(v, c, s.x, s.y); if (sx < -30 || sx > W + 30 || sy < -30 || sy > H + 30) continue; setScr();
+    g.globalAlpha = rev * (l > .95 ? .6 : .85); g.strokeStyle = l > .95 ? '#34d399' : '#f87171'; g.lineWidth = 1.4;
+    g.beginPath(); g.arc(sx, sy, 2 + 13 * err * Math.min(2, v.h / c.vh / 1.3), 0, 6.29); g.stroke(); } g.globalAlpha = 1;
+  // 가중치 전이 — 앞 권역에서 배운 것을 다음 권역으로 넘긴다
+  if (tr > 0) { const s = P[tr], u = smooth((t - s.x) / (s.a - s.x)), A = SUB[tr - 1], B = SUB[tr];
+    const pa = toScr(v, c, (A.x0 + A.x1) / 2, (A.y0 + A.y1) / 2), pb = toScr(v, c, (B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2);
+    const at = f => [lerp(pa[0], pb[0], f) + 90 * Math.sin(Math.PI * f), lerp(pa[1], pb[1], f)];
+    setScr(); g.globalCompositeOperation = 'lighter'; for (let k = 0; k < 14; k++) { const [x, y] = at(Math.max(0, u - k * .025)); g.globalAlpha = (1 - k / 14) * .8; g.drawImage(SP.violet, x - 26, y - 26, 52, 52); }
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; const [px, py] = at(u); sText('가중치 θ', px, py - 32, '#ddd6fe', 16, 1, 800); }
+  // 학습 오차 곡선 — 권역마다 색을 바꿔 잇는다(개념)
+  const bw = Math.min(200, W * .16), bh = 70, bx = W - bw - 66, by = 44, T0 = P[0].a, T1 = P3PLAN.end; setScr(); g.globalAlpha = rev;
+  g.fillStyle = 'rgba(8,14,30,.84)'; g.fillRect(bx - 12, by - 26, bw + 24, bh + 40); g.strokeStyle = 'rgba(255,255,255,.12)'; g.strokeRect(bx - 12, by - 26, bw + 24, bh + 40); g.globalAlpha = 1;
+  sText('학습 오차 (개념)', bx, by - 10, '#cbd5e1', 12, rev, 700, 'left');
+  if (t > T0) { let prev = null; for (let i = 0; i <= 90; i++) { const tt = lerp(T0, T1, i / 90); if (tt > t) break; let d = 0; P.forEach((s, j) => { if (tt >= s.a - .001) d = j; });
+      const iter = p3Iter(d, tt), bump = iter ? .07 * Math.exp(-iter.fr * 7) : 0, y = .08 + .9 * (1 - p3Lam(d, tt)) + bump;
+      const px = bx + i / 90 * bw, py = by + bh - clamp(y) * bh; setScr(); if (prev && prev.d === d) { g.strokeStyle = SUB[d].c; g.lineWidth = 2.2; g.beginPath(); g.moveTo(prev.x, prev.y); g.lineTo(px, py); g.stroke(); } prev = { x: px, y: py, d }; } }
+  // 되풀이 표시 · 제목
+  if (it) for (let i = 0; i < it.K; i++) hDot(W / 2 - (it.K - 1) * 11 + i * 22, SUBL + 2, 6, SUB[cur].c, .9, i > it.i);
+  const hd = done ? ['네 권역 학습 완료 — 체크포인트를 합쳐 전국 1 km', '#34d399'] : tr > 0 ? [`${SUB[tr - 1].ko} → ${SUB[tr].ko} · 배운 가중치를 넘긴다 (순차 전이)`, '#c4b5fd']
+    : cur === 0 ? ['북부부터 — 되풀이할수록 측정소 오차가 준다', '#93c5fd'] : cur > 0 ? [`${SUB[cur].ko} — ${SUB[cur - 1].ko}에서 배운 가중치로 시작해 이어 배운다`, SUB[cur].c]
+    : t < c1 ? ['측정소 관측 = 정답 · 틀린 만큼 고친다', '#fde68a'] : ['북부로 — 학습을 시작한다', '#93c5fd'];
+  sText(hd[0], W / 2, HEAD, hd[1], 22, rev);
+}
+// 시간별 추론 개념장. 시간 인덱스로 결정해 일시정지·탐색·재재생에도 같은 장을 표시한다.
+const P4FIELDS = new Map();
+function p4Field(hour) {
+  if (P4FIELDS.has(hour)) return P4FIELDS.get(hour);
+  const vals = new Float32Array(NN), ft = TSTAR + hour * 3, V = bgGrid(ft);
+  for (const k of LAND) {
+    const phase = KX(k) / 140 + KY(k) / 180;
+    const hourly = .13 * (Math.sin(hour * .85 + phase) - Math.sin(phase));
+    vals[k] = clamp(truth(bgSm(V, k), lv(k, ft), LCF[k]) + hourly);
+  }
+  P4FIELDS.set(hour, vals);
+  if (P4FIELDS.size > 2) P4FIELDS.delete(P4FIELDS.keys().next().value);
+  return vals;
+}
+function P4(t) { const v = FULLV(), c = cam(4, t);
+  const t0 = cue(4, 0), span = NDUR[4] * .5;
+  // “한 해 내내 시간마다” 구절부터 0.7초마다 한 시간씩, 농도 분포와 시계를 함께 갱신한다.
+  const hourlyStart = along(4, 0, .5), elapsed = Math.max(0, t - hourlyStart);
+  const step = Math.floor(elapsed / .7), h = step % 8760;
+  const blend = smooth((elapsed - step * .7) / .28);
+  const prev = p4Field(Math.max(0, step - 1) % 8760), next = p4Field(h);
+  const img = dynRaster(k => lerp(prev[k], next[k], blend), k => ramp(t, t0 + (DIST[k] / DMAX) * span, .6));
+  drawBase(v, c); drawRaster(v, c, img, false, .97); drawGridLines(v, c, .6); drawBorders(v, c, .85);
+  const sa = .85 * (1 - ramp(t, t0 + span, 1.5)); if (sa > .01) for (const s of ST) glow(v, c, s.x, s.y, 6, SP.pink, sa);
+  const dt = new Date(Date.UTC(2021, 0, 1, h));
+  const ds = `${dt.getUTCMonth() + 1}월 ${dt.getUTCDate()}일 ${String(dt.getUTCHours()).padStart(2, '0')}시`;
+  sText(`${ds}  ·  1 km 셀 353,400개 × 8,760시간${t >= hourlyStart ? '  ·  매시간 농도 갱신' : ''}`, W / 2, HEAD, '#e2e8f0', 20, ramp(t, t0, 1));
+  const za = ramp(t, LEAD + NDUR[4] * .55 + 1.6, .8); if (za > .01) sText('측정소가 없는 산지에도 — 골짜기 도로와 산림이 1 km 마다 다르다', W / 2, SUBL, '#7dd3fc', 16, za, 600);
+}
+function P5(t) { const v = FULLV(), c = cam(5, t);   // 2D 대체 화면 — 3D 가 켜지면 그 밑에서 사라진다
+  const c1 = cue(5, 1), c2 = cue(5, 2), c3 = cue(5, 3), grow = ramp(t, c1, 3.2), mixT = ramp(t, c1 + 3.4, 2.6);
+  drawBase(v, c);
+  drawGridLines(v, c, 1 - ramp(t, cue(5, 0), 1.5));
+  if (grow > .01) { const R = grow * grow * 90;
+    const img = dynRaster(k => lerp(C1B[k], C1S[k], mixT), k => clamp((R - DIST[k]) / 9));
+    drawRaster(v, c, img, true, .93);
+    if (grow < .999) for (const st of ST) glow(v, c, st.x, st.y, 12 + 30 * grow, SP.cyan, .22 * (1 - grow)); }
+  ripples(v, c, t, win(t, c1 + 3.2, c2 + .6, 1, 1));
+  drawBorders(v, c, .8);
+  const ma = ramp(t, c2, 1), pr = ramp(t, c2 + 3.4, 1);
+  ST.forEach((st, i) => { if (Math.abs(st.x - c.cx) > 130 || Math.abs(st.y - c.cy) > 90) return; const [sx, sy] = toScr(v, c, st.x, st.y);
+    if (MASKED.has(i) && ma > .01) { setScr(); g.globalAlpha = ma; g.fillStyle = 'rgba(2,6,23,.85)'; g.beginPath(); g.arc(sx, sy, 10, 0, 6.29); g.fill();
+      g.strokeStyle = '#e2e8f0'; g.lineWidth = 2; g.setLineDash([3, 3]); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+      if (pr < .6) sText('?', sx, sy + 1, '#f8fafc', 13, ma * (1 - pr / .6), 800);
+      if (pr > .01) { setScr(); g.globalAlpha = pr; g.fillStyle = rgb(valAt(st.x, st.y)); g.beginPath(); g.arc(sx, sy, 7, 0, 6.29); g.fill(); g.globalAlpha = 1; sText('✓', sx + 14, sy - 11, '#34d399', 15, pr, 800); } }
+    else glow(v, c, st.x, st.y, 6, SP.pink, .85); });
+  const qa = ramp(t, c3, 1);
+  if (qa > .01) { QRY.forEach(([x, y], i) => { const a = qa * ramp(t, c3 + i * .3, .5), [sx, sy] = toScr(v, c, x, y); setScr(); g.globalAlpha = a; g.strokeStyle = '#fde68a'; g.lineWidth = 2;
+      g.beginPath(); g.arc(sx, sy, 9, 0, 6.29); g.moveTo(sx - 18, sy); g.lineTo(sx - 5, sy); g.moveTo(sx + 5, sy); g.lineTo(sx + 18, sy); g.moveTo(sx, sy - 18); g.lineTo(sx, sy - 5); g.moveTo(sx, sy + 5); g.lineTo(sx, sy + 18); g.stroke();
+      g.fillStyle = rgb(valAt(x, y)); g.fillRect(sx + 14, sy - 26, 12, 12); g.globalAlpha = 1; sText(`(${x.toFixed(1)}, ${y.toFixed(1)}) km`, sx + 30, sy - 20, '#fef3c7', 12, a, 600, 'left'); }); }
+  const hd = t < c1 ? ['FGNO — 격자 대신 연속된 장', '#c4b5fd'] : t < c1 + 3.4 ? ['흩어진 점 → 하나의 연속된 장', '#7dd3fc'] : t < c2 ? ['장 전체가 바뀌는 규칙을 배운다 — 연산자', '#c4b5fd']
+    : t < c3 ? ['학습 — 측정소 몇 곳을 가리고, 그 자리를 예측', '#e2e8f0'] : ['원하는 좌표 어디서든 값을 읽는다 (설계)', '#fde68a'];
+  sText(hd[0], W / 2, HEAD, hd[1], 22, ramp(t, cue(5, 0), 1));
+}
+function P6(t) {   // 2D 대체 화면 — WebGL 이 없을 때만 보인다
+  const L = { x: 0, y: 0, w: W / 2, h: H }, R = { x: W / 2, y: 0, w: W / 2, h: H }, c = cam(6, t);
+  const a0 = ramp(t, cue(6, 1), 1.2), a1 = ramp(t, cue(6, 3), 1.2);
+  g.save(); setScr(); g.beginPath(); g.rect(0, 0, W / 2, H); g.clip();
+  gridScene(L, c, t, { field: .9, fieldImg: IM_AMR, cells: 1, reg: .5 * a0, st: 1 });
+  if (a1 > .01) { setScr(); g.globalCompositeOperation = 'lighter'; pulses(L, c, STE, t, .6, a1, SP.amber, 7, false); pulses(L, c, CELLE, t, .7, a1, SP.cyan, 6, true); g.globalCompositeOperation = 'source-over'; }
+  g.restore();
+  g.save(); setScr(); g.beginPath(); g.rect(W / 2, 0, W / 2, H); g.clip();
+  drawBase(R, c); drawRaster(R, c, IM_OUT, true, .9); ripples(R, c, t, a1); drawBorders(R, c, .8);
+  for (const st of STB) glow(R, c, st.x, st.y, 7, SP.pink, 1);
+  if (a1 > .01) QRY.forEach(([x, y], i) => { const [sx, sy] = toScr(R, c, x, y); const a = a1 * ramp(t, cue(6, 3) + .4 * i, .5); setScr(); g.globalAlpha = a; g.strokeStyle = '#fde68a'; g.lineWidth = 2;
+    g.beginPath(); g.arc(sx, sy, 8, 0, 6.29); g.moveTo(sx - 15, sy); g.lineTo(sx + 15, sy); g.moveTo(sx, sy - 15); g.lineTo(sx, sy + 15); g.stroke(); g.globalAlpha = 1; });
+  g.restore();
+  setScr(); g.globalAlpha = .6 + .4 * ramp(t, cue(6, 2), 1) * (.6 + .4 * Math.sin(t * 2.2)); g.strokeStyle = '#e0e7ff'; g.lineWidth = 2; g.beginPath(); g.moveTo(W / 2, 0); g.lineTo(W / 2, H); g.stroke(); g.globalAlpha = 1;
+}
+const DRAW = [P0, P1, P2, P3, P4, P5, P6];
+
+// ═════════ 3D 층 (three.js) — 1·2단계 세 층 이종 그래프 · 5단계 FGNO · 6단계 좌우 비교 ═════════
+// 세계 좌표 1 = 1 km. X = 동(+), Z = 남(+), Y = 위. 원점 = 서울 초점 상자(BB)의 가운데. 층 높이는 보기 좋게 과장했다.
+let G3 = null;   // 첫 그림을 낸 뒤 다음 작업에서 만든다(아래 맨 끝) — 덱이 미리 받는 동안 한 번에 멎는 시간을 나눈다
+function makeG3() {
+  const T = window.THREE;
+  if (!T || !T.WebGLRenderer || !T.EffectComposer) { console.warn('three.js 가 없다 — 2D 로 대신한다'); return null; }
+  let renderer;
+  try { renderer = new T.WebGLRenderer({ canvas: $('gl'), antialias: true, powerPreference: 'high-performance' }); }
+  catch (e) { console.warn('WebGL 을 열 수 없다 — 2D 로 대신한다', e); return null; }
+  renderer.toneMapping = T.NoToneMapping;   // 농도 색을 2D 색 막대와 같게 둔다
+  const scene = new T.Scene(); scene.background = new T.Color('#050a16'); scene.fog = new T.FogExp2('#050a16', .0009);
+  const camera = new T.PerspectiveCamera(40, 1, 1, 5000);
+  const composer = new T.EffectComposer(renderer); composer.addPass(new T.RenderPass(scene, camera));
+  const bloom = new T.UnrealBloomPass(new T.Vector2(512, 512), .5, .35, .55); composer.addPass(bloom); composer.addPass(new T.OutputPass());
+  const ADD = { transparent: true, depthWrite: false, blending: T.AdditiveBlending };
+  const OX = (BB.x0 + BB.x1) / 2, OY = (BB.y0 + BB.y1) / 2, BW = BB.x1 - BB.x0, BD = BB.y1 - BB.y0;
+  const wX = x => x - OX, wZ = y => -(y - OY);
+  const H_GR = 28, H_RG = 56, H_LAT = 26, AMP = 20, D2R = Math.PI / 180;
+  const US = { value: 1000 };   // 점 크기(km) → 화면 px
+  let VW = 1, VH = 1;
+  function size(w, h, dpr) { VW = w; VH = h; renderer.setPixelRatio(dpr); renderer.setSize(w, h, false); composer.setPixelRatio(dpr); composer.setSize(w, h);
+    camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix(); US.value = h * dpr / (2 * Math.tan(20 * D2R)); }
+
+  // ── 텍스처 ──
+  function canvasTex(c, nearest) { const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace;
+    if (nearest) { t.magFilter = T.NearestFilter; t.minFilter = T.LinearFilter; t.generateMipmaps = false; } else t.anisotropy = 4; return t; }
+  function bbTex(fn, step = 1) { const nx = Math.round(BW / step), ny = Math.round(BD / step), c = mkCanvas(nx, ny), x = c.getContext('2d'), im = x.createImageData(nx, ny);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const q = fn(BB.x0 + (i + .5) * step, BB.y1 - (j + .5) * step); if (q) im.data.set(q, (j * nx + i) * 4); }
+    x.putImageData(im, 0, 0); return canvasTex(c, true); }
+  const colOf = v => { const q = (clamp(v) * 255) | 0; return [LUT[q * 3], LUT[q * 3 + 1], LUT[q * 3 + 2]]; };
+  const landK = (x, y) => { const k = cellOf(x, y); return k >= 0 && mask[k] ? k : -1; };
+  const TX_C1 = bbTex((x, y) => { const k = landK(x, y); return k < 0 ? null : [...colOf(C1[k]), 255]; });
+  const TX_LOC = bbTex((x, y) => { const k = landK(x, y); if (k < 0) return null; const l = Math.min(1, L1[k] * 1.4); return [255, 90 + 70 * l, 200, Math.round(18 + 200 * l)]; });
+  const TX_BG5 = bbTex((x, y) => { const k = landK(x, y); if (k < 0) return null; const v = clamp((PRI[k] - .2) * 2); return [255, Math.round(150 + 70 * v), 40, Math.round(40 + 150 * v)]; }, 5);
+  const RAMP_TEX = (() => { const c = mkCanvas(256, 1), x = c.getContext('2d'), im = x.createImageData(256, 1); for (let q = 0; q < 256; q++) im.data.set([LUT[q * 3], LUT[q * 3 + 1], LUT[q * 3 + 2], 255], q * 4);
+    x.putImageData(im, 0, 0); const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.generateMipmaps = false; t.minFilter = t.magFilter = T.LinearFilter; return t; })();
+  function mapTex(x0, x1, y0, y1, s, frame) { const c = mkCanvas(Math.round((x1 - x0) * s), Math.round((y1 - y0) * s)), x = c.getContext('2d');
+    x.fillStyle = '#050b18'; x.fillRect(0, 0, c.width, c.height); x.setTransform(s, 0, 0, -s, -x0 * s, y1 * s);
+    x.fillStyle = '#0d1728'; x.fill(CTP); x.lineWidth = .25; x.strokeStyle = 'rgba(70,105,160,.45)'; x.stroke(SIG); x.lineWidth = .5; x.strokeStyle = 'rgba(150,175,210,.5)'; x.stroke(CTP);
+    if (frame) { x.setTransform(1, 0, 0, 1, 0, 0); x.strokeStyle = 'rgba(148,197,255,.35)'; x.lineWidth = 3; x.strokeRect(2, 2, c.width - 4, c.height - 4); }
+    return canvasTex(c, false); }
+  const GX0 = 70, GX1 = 350, GY0 = 470, GY1 = 730;   // 넓은 바닥 지도 — 2D 지도에서 3D 로 넘어갈 때 이어 보이게
+  function flat(w, d, mat, x, z, y = 0) { const m = new T.Mesh(new T.PlaneGeometry(w, d), mat); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.frustumCulled = false; return m; }
+  const ground = flat(GX1 - GX0, GY1 - GY0, new T.MeshBasicMaterial({ map: mapTex(GX0, GX1, GY0, GY1, 5), transparent: true, depthWrite: false, fog: false }), wX((GX0 + GX1) / 2), wZ((GY0 + GY1) / 2), -.3);
+  ground.renderOrder = -10; scene.add(ground);
+  const BBMAP = mapTex(BB.x0, BB.x1, BB.y0, BB.y1, 8, true);
+  const plateMat = () => new T.MeshBasicMaterial({ map: BBMAP, transparent: true, opacity: 0, depthWrite: false, fog: false });
+
+  // ── 점 · 선 · 펄스 ──
+  const PT_VS = `attribute float aH; attribute float aRev; attribute vec3 aCol; attribute float aSz;
+    uniform float uLift, uReveal, uScale, uTime; varying vec3 vCol; varying float vA;
+    void main(){ vec3 p = position; p.y += aH * uLift; float rev = smoothstep(aRev, aRev + .08, uReveal); vCol = aCol; vA = rev;
+      vec4 mv = modelViewMatrix * vec4(p, 1.); gl_Position = projectionMatrix * mv;
+      gl_PointSize = max(1.5, aSz * uScale / -mv.z * (1. + .12 * sin(uTime * 2.3 + aRev * 40.)) * (1. + 1.6 * (1. - rev) * rev * 4.)); }`;
+  const PT_FS = `uniform float uAlpha, uShape; varying vec3 vCol; varying float vA;
+    void main(){ vec2 d = gl_PointCoord - .5; float r = uShape > .5 ? (abs(d.x) + abs(d.y)) * .72 : length(d); if (r > .5) discard;
+      float core = smoothstep(.26, .0, r), halo = smoothstep(.5, .0, r) * .45; gl_FragColor = vec4(vCol * (core * 1.1 + halo * .6), 1.) * vA * uAlpha; }`;
+  function makePts(items, color, size, shape = 0) {
+    const n = items.length, P = new Float32Array(n * 3), Hh = new Float32Array(n), RV = new Float32Array(n), C = new Float32Array(n * 3), S = new Float32Array(n), c = new T.Color(color);
+    items.forEach((it, i) => { P.set([it.x, it.y0 || 0, it.z], i * 3); Hh[i] = it.h || 0; RV[i] = it.rev ?? 0; C.set([c.r, c.g, c.b], i * 3); S[i] = it.sz ?? size; });
+    const gm = new T.BufferGeometry(); gm.setAttribute('position', new T.BufferAttribute(P, 3)); gm.setAttribute('aH', new T.BufferAttribute(Hh, 1));
+    gm.setAttribute('aRev', new T.BufferAttribute(RV, 1)); gm.setAttribute('aCol', new T.BufferAttribute(C, 3)); gm.setAttribute('aSz', new T.BufferAttribute(S, 1));
+    const m = new T.ShaderMaterial({ ...ADD, uniforms: { uLift: { value: 0 }, uReveal: { value: 0 }, uAlpha: { value: 0 }, uTime: { value: 0 }, uScale: US, uShape: { value: shape } }, vertexShader: PT_VS, fragmentShader: PT_FS });
+    const o = new T.Points(gm, m); o.frustumCulled = false; return o; }
+  function makeEdges(segs, color, base) {
+    const n = segs.length, P = new Float32Array(n * 6), Hh = new Float32Array(n * 2), O = new Float32Array(n * 2);
+    segs.forEach((s, i) => { P.set([s.a.x, s.a.y0 || 0, s.a.z, s.b.x, s.b.y0 || 0, s.b.z], i * 6); Hh[i * 2] = s.a.h; Hh[i * 2 + 1] = s.b.h; O[i * 2] = O[i * 2 + 1] = s.ord; });
+    const gm = new T.BufferGeometry(); gm.setAttribute('position', new T.BufferAttribute(P, 3)); gm.setAttribute('aH', new T.BufferAttribute(Hh, 1)); gm.setAttribute('aOrd', new T.BufferAttribute(O, 1));
+    const m = new T.ShaderMaterial({ ...ADD, uniforms: { uLift: { value: 0 }, uReveal: { value: 0 }, uAlpha: { value: 0 }, uCol: { value: new T.Color(color) }, uBase: { value: base } },
+      vertexShader: `attribute float aH; attribute float aOrd; uniform float uLift, uReveal; varying float vR;
+        void main(){ vec3 p = position; p.y += aH * uLift; vR = smoothstep(aOrd, aOrd + .1, uReveal); gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.); }`,
+      fragmentShader: `uniform vec3 uCol; uniform float uAlpha, uBase; varying float vR; void main(){ gl_FragColor = vec4(uCol * uBase * vR * uAlpha, 1.); }` });
+    const o = new T.LineSegments(gm, m); o.frustumCulled = false; return o; }
+  function makePulses(segs, color, per, size) { const r = rng(99), items = []; segs.forEach(s => { for (let k = 0; k < per; k++) items.push({ s, ph: r(), sp: .32 + r() * .38 }); });
+    const n = items.length, A = new Float32Array(n * 3), B = new Float32Array(n * 3), HP = new Float32Array(n * 4);
+    items.forEach((it, i) => { A.set([it.s.a.x, it.s.a.y0 || 0, it.s.a.z], i * 3); B.set([it.s.b.x, it.s.b.y0 || 0, it.s.b.z], i * 3); HP.set([it.s.a.h, it.s.b.h, it.ph, it.sp], i * 4); });
+    const gm = new T.BufferGeometry(); gm.setAttribute('position', new T.BufferAttribute(A, 3)); gm.setAttribute('aB', new T.BufferAttribute(B, 3)); gm.setAttribute('aHP', new T.BufferAttribute(HP, 4));
+    const m = new T.ShaderMaterial({ ...ADD, uniforms: { uLift: { value: 0 }, uTime: { value: 0 }, uAlpha: { value: 0 }, uRev: { value: 0 }, uCol: { value: new T.Color(color) }, uSz: { value: size }, uScale: US },
+      vertexShader: `attribute vec3 aB; attribute vec4 aHP; uniform float uLift, uTime, uRev, uSz, uScale; varying float vF;
+        void main(){ float f = fract(uTime * aHP.w + aHP.z); float u = uRev > .5 ? 1. - f : f; vec3 a = position, b = aB; a.y += aHP.x * uLift; b.y += aHP.y * uLift;
+          vec3 p = mix(a, b, u); vF = sin(f * 3.14159); vec4 mv = modelViewMatrix * vec4(p, 1.); gl_Position = projectionMatrix * mv; gl_PointSize = max(2., uSz * uScale / -mv.z); }`,
+      fragmentShader: `uniform vec3 uCol; uniform float uAlpha; varying float vF;
+        void main(){ float r = length(gl_PointCoord - .5); if (r > .5) discard; gl_FragColor = vec4(uCol * 1.7 * smoothstep(.5, 0., r), 1.) * vF * uAlpha; }` });
+    const o = new T.Points(gm, m); o.frustumCulled = false; return o; }
+  const knn = (src, dst, k, maxD = 1e9, self = false) => { const out = [];
+    src.forEach((a, i) => { dst.map((b, j) => ({ j, d: Math.hypot(a.x - b.x, a.z - b.z) })).filter(o => (!self || dst[o.j] !== a) && o.d < maxD).sort((p, q) => p.d - q.d).slice(0, k).forEach(o => out.push([a, dst[o.j]])); });
+    return out; };
+  const R2 = rng(5), seg = (pairs, o0, o1) => pairs.map(([a, b]) => ({ a, b, ord: lerp(o0, o1, R2()) }));
+
+  // ── 세 층 이종 그래프 (서울 초점 상자) ──
+  const graph = new T.Group(); scene.add(graph);
+  const gSt = ST.filter(s => inBB(s.x, s.y)).map(s => ({ x: wX(s.x), z: wZ(s.y), h: 0, y0: .6, xk: s.x, yk: s.y }));
+  const gGr = []; for (let yk = BB.y0 + 2; yk <= BB.y1; yk += 4) for (let xk = BB.x0 + 2; xk <= BB.x1; xk += 4) if (onLand(xk, yk)) gGr.push({ x: wX(xk), z: wZ(yk), h: H_GR, xk, yk });
+  const gRg = []; for (let yk = BB.y0 + 2.5; yk < BB.y1; yk += 10) for (let xk = BB.x0 + 2.5; xk < BB.x1; xk += 10) if (onLand(xk, yk)) gRg.push({ x: wX(xk), z: wZ(yk), h: H_RG, xk, yk });
+  const gKey = new Map(gGr.map(p => [`${p.xk}_${p.yk}`, p])), rKey = new Map(gRg.map(p => [`${p.xk}_${p.yk}`, p]));
+  const eSS = seg(knn(gSt, gSt, 3, 9, true), 0, .3);
+  const eGG = seg(gGr.flatMap(a => [[4, 0], [0, 4]].map(([dx, dy]) => gKey.get(`${a.xk + dx}_${a.yk + dy}`)).filter(Boolean).map(b => [a, b])), .05, .35);
+  const eRR = seg(gRg.flatMap(a => [[10, 0], [0, 10]].map(([dx, dy]) => rKey.get(`${a.xk + dx}_${a.yk + dy}`)).filter(Boolean).map(b => [a, b])), .1, .4);
+  // 층 사이 엣지 — 서울 도심은 측정소가 빽빽해 다 이으면 한 덩어리로 타 버린다. 격자 하나에 가장 가까운 측정소 하나만, 광역 쪽은 셋에 하나만 잇는다
+  const gStS = gSt.filter((_, i) => i % 3 === 0);
+  const eGS = seg(knn(gGr, gSt, 1, 6).map(([gr, s]) => [gr, s]), .35, .7);   // 격자 → 측정소
+  const eGR = seg(knn(gRg, gGr, 4).map(([r, gr]) => [gr, r]), .4, .75);     // 격자 → 광역
+  const eSR = seg(knn(gStS, gRg, 1), .45, .8);
+  const edges = [makeEdges(eSS, '#f472b6', .4), makeEdges(eGG, '#7dd3fc', .14), makeEdges(eRR, '#f59e0b', .5),
+                 makeEdges(eGS, '#34d399', .16), makeEdges(eGR, '#a3e635', .16), makeEdges(eSR, '#a78bfa', .14)];
+  const pulsesG = [makePulses(eGR, '#fde68a', 1, 1.3), makePulses(eGS, '#f9a8d4', 1, 1.2), makePulses(eSS.filter((_, i) => i % 2 === 0), '#f9a8d4', 1, 1), makePulses(eRR, '#fde68a', 1, 1.1)];
+  const ptSt = makePts(gSt.map(s => ({ ...s, rev: R2() * .3 })), '#ff5fb4', 1.8);
+  const ptGr = makePts(gGr.map(p => ({ ...p, rev: .1 + R2() * .3 })), '#7dd3fc', 1.1);
+  const ptRg = makePts(gRg.map(p => ({ ...p, rev: .2 + R2() * .3 })), '#fbbf24', 2.4, 1);
+  const PLANE_VS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`;
+  const PLANE_FS = `uniform sampler2D uA, uB; uniform float uMix, uAlpha, uPulse; uniform vec3 uEdge; varying vec2 vUv;
+    void main(){ vec4 a = texture2D(uA, vUv), b = texture2D(uB, vUv); vec4 c = mix(a, b, uMix);
+      vec2 e = min(vUv, 1. - vUv); float fr = smoothstep(.01, 0., min(e.x, e.y));
+      gl_FragColor = vec4((c.rgb * c.a * (1. + uPulse) * .85 + uEdge * fr * .7) * uAlpha, 1.); }`;
+  const layerPlane = (ta, tb, edge) => flat(BW, BD, new T.ShaderMaterial({ ...ADD, side: T.DoubleSide, vertexShader: PLANE_VS, fragmentShader: PLANE_FS,
+    uniforms: { uA: { value: ta }, uB: { value: tb }, uMix: { value: 0 }, uAlpha: { value: 0 }, uPulse: { value: 0 }, uEdge: { value: new T.Color(edge) } } }), 0, 0);
+  const plGr = layerPlane(TX_LOC, TX_C1, '#7dd3fc'), plRg = layerPlane(TX_BG5, TX_BG5, '#f59e0b'), plateG = flat(BW, BD, plateMat(), 0, 0, .05);
+  graph.add(plateG, plGr, plRg, ...edges, ...pulsesG, ptSt, ptGr, ptRg);
+
+  // ── FGNO (같은 상자) ──
+  const fg = new T.Group(); scene.add(fg);
+  const plateF = flat(BW, BD, plateMat(), 0, 0, .05); fg.add(plateF);
+  const FB = (() => { let lo = 1, hi = 0; for (let x = BB.x0; x <= BB.x1; x += 2) for (let y = BB.y0; y <= BB.y1; y += 2) if (onLand(x, y)) { const v = sampleB(x, y); lo = Math.min(lo, v); hi = Math.max(hi, v); } return [lo, hi]; })();
+  const fAt = (x, z) => .1 + .82 * clamp((sampleB(OX + x, OY - z) - FB[0]) / Math.max(.01, FB[1] - FB[0]));   // 매끈한 장 값(6 km 흐림, 상자 안 정규화) — 세계 좌표
+  const hAt = (x, z) => H_LAT + fAt(x, z) * AMP;
+  const surf = (() => { const gm = new T.PlaneGeometry(BW, BD, 150, 160); gm.rotateX(-Math.PI / 2); const p = gm.attributes.position, n = p.count, AV = new Float32Array(n), AL = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const x = p.getX(i), z = p.getZ(i); AV[i] = fAt(x, z); AL[i] = onLand(OX + x, OY - z) ? 1 : .16; }
+    gm.setAttribute('aV', new T.BufferAttribute(AV, 1)); gm.setAttribute('aL', new T.BufferAttribute(AL, 1));
+    const m = new T.ShaderMaterial({ ...ADD, side: T.DoubleSide, uniforms: { uGrow: { value: 0 }, uAlpha: { value: 0 }, uTime: { value: 0 }, uMix: { value: 0 }, uRamp: { value: RAMP_TEX } },
+      vertexShader: `attribute float aV; attribute float aL; uniform float uGrow, uTime, uMix; varying float vV; varying float vL; varying vec2 vP;
+        void main(){ vec3 p = position; vV = aV; vL = aL; vP = p.xz;
+          float wob = uMix * (2.2 * sin(p.x * .09 + uTime * 1.3) + 1.6 * sin(p.z * .17 - uTime * 1.7) + .9 * sin((p.x + p.z) * .31 + uTime * 2.1));
+          p.y = ${H_LAT.toFixed(1)} * uGrow + (aV * ${AMP.toFixed(1)} + wob) * uGrow; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.); }`,
+      fragmentShader: `uniform sampler2D uRamp; uniform float uAlpha; varying float vV; varying float vL; varying vec2 vP;
+        void main(){ float iso = smoothstep(.08, 0., abs(fract(vV * 12.) - .5) - .42); vec2 g = abs(fract(vP * .12) - .5); float mesh = smoothstep(.485, .5, max(g.x, g.y));
+          vec3 c = texture2D(uRamp, vec2(clamp(vV, 0., 1.), .5)).rgb * (.1 + .3 * iso) * vL + vec3(.35, .7, 1.) * mesh * .05; gl_FragColor = vec4(c, 1.) * uAlpha; }` });
+    const o = new T.Mesh(gm, m); o.frustumCulled = false; return o; })();
+  const fgSt = makePts(gSt, '#ff5fb4', 2.2);
+  const kernels = (() => { const n = gSt.length, P = new Float32Array(n * 3), Dd = new Float32Array(n), r = rng(31);
+    gSt.forEach((s, i) => { P.set([s.x, .8, s.z], i * 3); Dd[i] = r() * .6; });
+    const gm = new T.BufferGeometry(); gm.setAttribute('position', new T.BufferAttribute(P, 3)); gm.setAttribute('aD', new T.BufferAttribute(Dd, 1));
+    const m = new T.ShaderMaterial({ ...ADD, uniforms: { uT: { value: 0 }, uA: { value: 0 }, uScale: US },
+      vertexShader: `attribute float aD; uniform float uT, uScale; varying float vK; void main(){ vK = clamp((uT - aD) / 1.4, 0., 1.);
+        vec4 mv = modelViewMatrix * vec4(position, 1.); gl_Position = projectionMatrix * mv; gl_PointSize = (1.5 + 16. * vK) * uScale / -mv.z; }`,
+      fragmentShader: `uniform float uA; varying float vK; void main(){ float r = length(gl_PointCoord - .5) * 2.; if (r > 1.) discard;
+        float ring = exp(-pow((r - .92) * 14., 2.)), fill = exp(-r * r * 3.) * .35; gl_FragColor = vec4(vec3(.35, .8, 1.) * (ring * .6 + fill * .1), 1.) * uA * (1. - vK * .7) * step(.001, vK); }` });
+    const o = new T.Points(gm, m); o.frustumCulled = false; return o; })();
+  const beams = (() => { const pos = [], al = []; gSt.forEach(s => { pos.push(s.x, .6, s.z, s.x, hAt(s.x, s.z), s.z); al.push(1, 0); });
+    const gm = new T.BufferGeometry(); gm.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); gm.setAttribute('aF', new T.Float32BufferAttribute(al, 1));
+    const m = new T.ShaderMaterial({ ...ADD, uniforms: { uA: { value: 0 } }, vertexShader: `attribute float aF; varying float vF; void main(){ vF = aF; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+      fragmentShader: `uniform float uA; varying float vF; void main(){ gl_FragColor = vec4(vec3(.5, .85, 1.) * (.25 + .75 * vF), 1.) * uA; }` });
+    return new T.LineSegments(gm, m); })();
+  const modes = [[60, .2, '#38bdf8'], [30, 1.1, '#a78bfa'], [15, 2.3, '#f472b6']].map(([lam, ang, col]) => {
+    const k = 2 * Math.PI / lam, gm = new T.PlaneGeometry(BW, BD, 110, 118); gm.rotateX(-Math.PI / 2);
+    const m = new T.ShaderMaterial({ ...ADD, side: T.DoubleSide, uniforms: { uA: { value: 0 }, uY: { value: 0 }, uTime: { value: 0 }, uCol: { value: new T.Color(col) }, uK: { value: new T.Vector2(Math.cos(ang) * k, Math.sin(ang) * k) } },
+      vertexShader: `uniform float uY, uTime; uniform vec2 uK; varying float vS; varying vec2 vP;
+        void main(){ vec3 p = position; float ph = dot(uK, p.xz) + uTime * 1.6; vS = sin(ph); p.y = uY + vS * 2.6; vP = p.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.); }`,
+      fragmentShader: `uniform vec3 uCol; uniform float uA; varying float vS; varying vec2 vP;
+        void main(){ vec2 g = abs(fract(vP * .16) - .5); float ln = smoothstep(.46, .5, max(g.x, g.y)); float crest = smoothstep(.75, 1., vS);
+          gl_FragColor = vec4(uCol * (ln * .45 + crest * .14 + .01), 1.) * uA; }` });
+    const o = new T.Mesh(gm, m); o.frustumCulled = false; return o; });
+  const lattice = (() => { const pos = [], st = 4; for (let x = -BW / 2; x <= BW / 2 + 1e-6; x += st) pos.push(x, 0, -BD / 2, x, 0, BD / 2);
+    for (let z = -BD / 2; z <= BD / 2 + 1e-6; z += st) pos.push(-BW / 2, 0, z, BW / 2, 0, z);
+    const gm = new T.BufferGeometry(); gm.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+    return new T.LineSegments(gm, new T.LineBasicMaterial({ color: 0x93c5fd, opacity: 0, ...ADD })); })();
+  // 가린 측정소 — 어두운 덮개 · 예측 구슬
+  const MK3 = gSt.filter((s, i) => i % 17 === 6 && Math.abs(s.x) < 48 && Math.abs(s.z) < 50).slice(0, 8);
+  const shells = MK3.map(s => { const m = new T.Mesh(new T.SphereGeometry(2.2, 18, 12), new T.MeshBasicMaterial({ color: 0x020617, transparent: true, opacity: 0, depthWrite: false }));
+    m.position.set(s.x, 1.2, s.z); m.renderOrder = 5; const ring = new T.Mesh(new T.RingGeometry(2.6, 3.1, 40), new T.MeshBasicMaterial({ color: 0xe2e8f0, opacity: 0, side: T.DoubleSide, ...ADD }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(s.x, 1.3, s.z); const c = colOf(fAt(s.x, s.z));
+    const bead = new T.Mesh(new T.SphereGeometry(1.3, 16, 12), new T.MeshBasicMaterial({ color: new T.Color(`rgb(${c.join(',')})`), opacity: 0, ...ADD }));
+    fg.add(m, ring, bead); return { s, m, ring, bead, top: hAt(s.x, s.z) }; });
+  // 임의 좌표 질의 · 활공 점
+  const probes = QRY.filter(([x, y]) => inBB(x, y)).map(([xk, yk], i) => { const x = wX(xk), z = wZ(yk), y = hAt(x, z), grp = new T.Group();
+    const lineO = new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(0, y, 0), new T.Vector3(0, y + 22, 0)]), new T.LineBasicMaterial({ color: 0xfef3c7, opacity: 0, ...ADD }));
+    const ball = new T.Mesh(new T.SphereGeometry(1.4, 18, 12), new T.MeshBasicMaterial({ color: 0xffffff, opacity: 0, ...ADD }));
+    const ring = new T.Mesh(new T.RingGeometry(2.3, 2.9, 40), new T.MeshBasicMaterial({ color: 0xfde68a, opacity: 0, side: T.DoubleSide, ...ADD })); ring.rotation.x = -Math.PI / 2; ring.position.y = y + .2;
+    grp.position.set(x, 0, z); grp.add(lineO, ball, ring); fg.add(grp); return { xk, yk, x, z, y, t0: i * .38, lineO, ball, ring }; });
+  const TRN = 90, trail = new T.Line(new T.BufferGeometry().setAttribute('position', new T.BufferAttribute(new Float32Array(TRN * 3), 3)), new T.LineBasicMaterial({ color: 0xfef08a, opacity: 0, ...ADD }));
+  trail.frustumCulled = false; const glider = new T.Mesh(new T.SphereGeometry(1.5, 18, 12), new T.MeshBasicMaterial({ color: 0xfef9c3, opacity: 0, ...ADD }));
+  const gliderAt = u => { const x = Math.sin(u * 1.3) * BW * .36, z = Math.sin(u * 2.1 + .7) * BD * .34; return [x, hAt(x, z) + .8, z]; };
+  /* 그리는 순서(2026-09-26 지시 — 6단계 오른쪽에서 바닥 측정망 판이 3차원 장 위로 그려져 장 앞쪽을 가렸다).
+     투명 물체는 renderOrder → 거리 순으로 그린다. 판·측정소 쪽이 장과 거리가 비슷해 판이 나중에 그려지곤 했다.
+       0 바닥(지도판 · 측정소 점 · 커널 · 기둥선 · 가린 측정소 덮개)  →  1 가림막(장과 같은 모양, 배경색 반투명 — 장 아래 바닥을 어둡게)
+       →  2 장  →  3 장 위(파동 모드 · 격자 · 질의 · 활공 · 예측 구슬). 바닥이 늘 장 뒤(아래)로 보인다 */
+  const occl = new T.Mesh(surf.geometry, new T.ShaderMaterial({ transparent: true, depthWrite: false, side: T.DoubleSide,
+    uniforms: { uGrow: surf.material.uniforms.uGrow, uTime: surf.material.uniforms.uTime, uMix: surf.material.uniforms.uMix, uA: { value: 0 } },
+    vertexShader: surf.material.vertexShader, fragmentShader: `uniform float uA; varying float vL; void main(){ gl_FragColor = vec4(.02, .04, .086, uA * (.35 + .5 * vL)); }` }));
+  occl.frustumCulled = false;
+  [plateF, fgSt, kernels, beams].forEach(o => o.renderOrder = 0);
+  shells.forEach(q => { q.m.renderOrder = 0; q.ring.renderOrder = 0; q.bead.renderOrder = 3; });
+  occl.renderOrder = 1; surf.renderOrder = 2;
+  [...modes, lattice, trail, glider].forEach(o => o.renderOrder = 3); probes.forEach(p => [p.lineO, p.ball, p.ring].forEach(o => o.renderOrder = 3));
+  fg.add(occl, surf, kernels, beams, fgSt, ...modes, lattice, trail, glider);
+
+  // ── 상태 설정 도우미 ──
+  const setP = (o, lift, rev, a, t) => { const u = o.material.uniforms; u.uLift.value = lift; u.uReveal.value = rev; u.uAlpha.value = a; u.uTime.value = t; o.visible = a > .003; };
+  const setE = (o, lift, rev, a) => { const u = o.material.uniforms; u.uLift.value = lift; u.uReveal.value = rev; u.uAlpha.value = a; o.visible = a > .003 && rev > .003; };
+  const setU = (o, a) => { o.material.opacity = a; o.visible = a > .003; };
+  function graphState(s, t) {
+    graph.visible = true; const lift = s.lift;
+    setP(ptSt, lift, s.revSt, s.gA, t); setP(ptGr, lift, s.revGr, s.gA, t); setP(ptRg, lift, s.revRg, s.gA * (s.regNodeA ?? 1), t);
+    edges.forEach((e, i) => setE(e, lift, i < 3 ? s.revIntra : s.revInter, s.gA * s.edgeA * (i >= 4 ? s.regEdgeA ?? 1 : 1)));   // 4·5 = 광역에 닿는 엣지
+    pulsesG.forEach((p, i) => { const u = p.material.uniforms; u.uLift.value = lift; u.uTime.value = t; u.uRev.value = s.pulseRev ? 1 : 0; u.uAlpha.value = s.pulseA * (i > 1 ? .6 : 1) * (i === 0 || i === 3 ? s.regEdgeA ?? 1 : 1); p.visible = u.uAlpha.value > .003; });
+    const ug = plGr.material.uniforms; plGr.position.y = H_GR * lift; ug.uAlpha.value = s.gridA; ug.uMix.value = s.gridMix; ug.uPulse.value = s.gridPulse || 0; plGr.visible = s.gridA > .003;
+    const ur = plRg.material.uniforms; plRg.position.y = (s.regH ?? H_RG) * lift; ur.uAlpha.value = s.regA; plRg.visible = s.regA > .003;
+    ptRg.material.uniforms.uLift.value = lift * (s.regH ?? H_RG) / H_RG;
+    edges[2].material.uniforms.uLift.value = lift * (s.regH ?? H_RG) / H_RG;
+    setU(plateG, s.plateA || 0);
+  }
+  function fgState(s, t) {
+    fg.visible = true;
+    lattice.material.opacity = s.latA || 0; lattice.visible = (s.latA || 0) > .003; lattice.position.y = s.latY || 1;
+    kernels.material.uniforms.uT.value = s.kT ?? -1; kernels.material.uniforms.uA.value = s.kA || 0; kernels.visible = (s.kA || 0) > .003;
+    beams.material.uniforms.uA.value = s.beamA || 0; beams.visible = (s.beamA || 0) > .003;
+    const u = surf.material.uniforms; u.uGrow.value = s.grow; u.uAlpha.value = s.surfA; u.uTime.value = t; u.uMix.value = s.wob || 0; surf.visible = s.surfA > .003;
+    occl.material.uniforms.uA.value = s.surfA * Math.min(1, (s.grow || 0) * 3); occl.visible = surf.visible;   // 장이 솟아오르는 만큼 아래 바닥이 가려진다
+    setP(fgSt, 0, 1.2, s.stA ?? 1, t);
+    modes.forEach((m, i) => { const mu = m.material.uniforms; mu.uTime.value = t; mu.uA.value = s.modeA ? s.modeA[i] : 0; mu.uY.value = s.modeY ? s.modeY[i] : 0; m.visible = mu.uA.value > .003; });
+    shells.forEach((q, i) => { const ma = s.maskA || 0, pr = s.pred ? s.pred(i) : 0; q.m.material.opacity = .92 * ma * (1 - pr); q.m.visible = q.m.material.opacity > .003;
+      q.ring.material.opacity = .7 * ma * (1 - .6 * pr); q.ring.visible = q.ring.material.opacity > .003;
+      const drop = s.drop ? s.drop(i) : 0; q.bead.position.set(q.s.x, lerp(q.top, 2.2, drop), q.s.z); q.bead.material.opacity = ma * (drop > 0 ? 1 : 0); q.bead.visible = q.bead.material.opacity > .003; });
+    probes.forEach(p => { const a = s.probe ? s.probe(p) : 0, dr = s.probeDrop ? s.probeDrop(p) : 1; setU(p.lineO, a * .9); setU(p.ball, a); setU(p.ring, a * .9);
+      p.ball.position.y = p.y + (1 - dr) * 18; p.ring.scale.setScalar(1 + .5 * Math.sin((t - p.t0) * 4) ** 2); });
+    const gl = s.glide || 0; setU(glider, gl); setU(trail, gl * .9);
+    if (gl > .003) { const u0 = (t - (s.glideT0 || 0)) * .5; glider.position.set(...gliderAt(u0)); const tp = trail.geometry.attributes.position;
+      for (let i = 0; i < TRN; i++) tp.setXYZ(i, ...gliderAt(u0 - i * .018)); tp.needsUpdate = true; }
+    setU(plateF, s.plateA || 0);
+  }
+
+  // ── 카메라 — 목표점 둘레의 구면 좌표 열쇠틀. 위에서 내려다본 판(pitch 89.9)이 2D 지도와 같은 틀이다 ──
+  const K = (t, tgt, r, yaw, pitch) => ({ t, tgt, r, yaw, pitch });
+  const TOP = (t, vh) => K(t, [0, 0, 0], vh / (2 * Math.tan(20 * D2R)), 0, 89.9);
+  function keyAt(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1].t) i++; const a = keys[i], b = keys[i + 1] || a, f = smooth((t - a.t) / Math.max(.001, b.t - a.t));
+    return { tgt: a.tgt.map((v, j) => lerp(v, b.tgt[j], f)), r: Math.exp(lerp(Math.log(a.r), Math.log(b.r), f)), yaw: lerp(a.yaw, b.yaw, f), pitch: lerp(a.pitch, b.pitch, f) }; }
+  const KEYS = [];
+  { const c11 = cue(1, 1), c12 = cue(1, 2);
+    KEYS[1] = [TOP(0, SEOUL.vh), TOP(c11 + .1, SEOUL.vh), K(c11 + 2.8, [0, 24, 0], 292, -26, 30), K(c12, [0, 26, 0], 282, -14, 28), K(DUR[1], [0, 26, 0], 276, -6, 28)];
+    const c21 = cue(2, 1), c22 = cue(2, 2), c23 = cue(2, 3);
+    KEYS[2] = [K(0, [0, 26, 0], 276, -6, 28), K(c21, [0, 26, 0], 268, 4, 30), K(c22, [0, 22, 0], 250, 12, 36), K(c23 - 2.6, [0, 18, 0], 225, 14, 42), TOP(c23 - 1.2, SEOUL.vh), TOP(DUR[2], SEOUL.vh)];
+    const c51 = cue(5, 1), tMode = along(5, 1, .52), c52 = cue(5, 2), c53 = cue(5, 3);
+    KEYS[5] = [TOP(0, FG5.vh), TOP(2.8, FG5.vh), K(c51 + .6, [0, 14, 0], 262, 16, 40), K(tMode, [0, 28, 0], 272, 24, 29), K(c52 + .2, [0, 16, 0], 232, 8, 44),
+      K(c53, [0, 22, 0], 248, -12, 36), K(DUR[5], [0, 22, 0], 258, -22, 33)];
+    // 좌우 비교를 유지하며 상공 → 수평에 가까운 시점 → 상공으로 천천히 이동한다.
+    KEYS[6] = [K(0, [0, 22, 0], 258, -22, 33), K(2.6, [0, 26, 0], 360, 0, 25),
+      K(DUR[6] * .36, [0, 26, 0], 390, -8, 78),
+      K(DUR[6] * .72, [0, 26, 0], 370, 8, 10),
+      K(DUR[6], [0, 26, 0], 390, 0, 78)]; }
+  const orb = { yaw: 0, pitch: 0, zoom: 1 };
+  function placeCam(p, t) { const k = keyAt(KEYS[p], t); let yaw = k.yaw + orb.yaw, pitch = clamp(k.pitch + orb.pitch, 4, 89.9), r = k.r * orb.zoom;
+    if (p === 6 && t > DUR[6]) {   // 내레이션이 끝나도 32초 주기로 상공·수평 시점을 계속 오간다.
+      const cycle = (t - DUR[6]) * Math.PI * 2 / 32, low = (1 - Math.cos(cycle)) / 2;
+      yaw += 8 * Math.sin(cycle) ** 3;
+      pitch = clamp(lerp(78, 10, low) + orb.pitch, 4, 89.9);
+      r = lerp(390, 370, low) * orb.zoom;
+    }
+    const cp = Math.cos(pitch * D2R), [tx, ty, tz] = k.tgt;
+    camera.position.set(tx + r * Math.sin(yaw * D2R) * cp, ty + r * Math.sin(pitch * D2R), tz + r * Math.cos(yaw * D2R) * cp); camera.up.set(0, 1, 0); camera.lookAt(tx, ty, tz); }
+  const _v = new T.Vector3();
+  const proj = (x, y, z) => { _v.set(x, y, z).project(camera); return _v.z < 1 && _v.z > -1 ? [(_v.x + 1) / 2 * VW, (1 - _v.y) / 2 * VH] : null; };
+
+  // ── 단계별 3D 상태 ──
+  function frameGraph(p, t) {
+    if (p === 1) { const c1 = cue(1, 1);
+      graphState({ lift: ramp(t, c1 + .5, 2.4), gA: 1, revSt: ramp(t, c1 + .2, 1.6) * 1.1, revGr: ramp(t, c1 + .8, 1.8) * 1.1, revRg: ramp(t, c1 + 1.4, 1.6) * 1.1,
+        revIntra: ramp(t, c1 + 2.4, 2.4) * 1.15, revInter: ramp(t, c1 + 4.6, 2.8) * 1.15, edgeA: 1, gridA: .34, gridMix: 1, regA: .3 * ramp(t, c1 + 1.4, 1.4), pulseA: 0 }, t);
+      return; }
+    const c0 = cue(2, 0), c1 = cue(2, 1), c2 = cue(2, 2), c3 = cue(2, 3), dn0 = along(2, 1, .42);
+    const fuse = ramp(t, c2 + .4, 2.6), col = ramp(t, c3 - 2.6, 1.3), pa = win(t, c0 + .3, c2 + 1.6, .6, .9);
+    graphState({ lift: 1 - col, gA: 1 - .35 * fuse, revSt: 1.2, revGr: 1.2, revRg: 1.2, revIntra: 1.2, revInter: 1.2, edgeA: (1 - .6 * fuse) * (1 - col),
+      gridA: .42 + .08 * fuse, gridMix: fuse, gridPulse: t > dn0 && t < c2 + 1 ? .35 * (.5 + .5 * Math.sin((t - dn0) * 5)) : 0,
+      regA: .36 * (1 - fuse), regH: lerp(H_RG, H_GR + .6, fuse), regNodeA: 1 - .7 * fuse, regEdgeA: 1 - ramp(t, c2, .8), pulseA: pa, pulseRev: t > dn0 }, t);
+  }
+  function frameFg(t) { const c0 = cue(5, 0), c1 = cue(5, 1), c2 = cue(5, 2), c3 = cue(5, 3), tMode = along(5, 1, .52), tPr = along(5, 2, .38);
+    const merge = ramp(t, c2 - .7, 1);
+    fgState({ latA: .55 * (1 - ramp(t, c0 + 1.4, 2.2)), latY: 1 + 22 * ramp(t, c0 + 1, 2.6), kT: t - (c1 + .2), kA: ramp(t, c1 + .2, .3) * (1 - ramp(t, tMode, 1)),
+      beamA: .75 * ramp(t, c1 + .9, 1) * (1 - .65 * ramp(t, tMode + 1.4, 1)), grow: ramp(t, c1 + .7, 2.8), surfA: ramp(t, c1 + .6, 1.2), wob: ramp(t, tMode + .5, .8) * (1 - ramp(t, c2 - .4, .8)),
+      modeA: [0, 1, 2].map(i => .9 * ramp(t, tMode + i * .35, .6) * (1 - merge)), modeY: [0, 1, 2].map(i => lerp(H_LAT + AMP + 8, H_LAT + AMP + 10 + i * 9, ramp(t, tMode + i * .35, .9)) * (1 - merge) + (H_LAT + 10) * merge),
+      maskA: ramp(t, c2 + .4, .8), pred: i => ramp(t, tPr + .9 + i * .12, .5), drop: i => ramp(t, tPr + i * .12, 1.1),
+      probe: p => ramp(t, c3 + .3 + p.t0, .35), probeDrop: p => ramp(t, c3 + .3 + p.t0, .5), glide: ramp(t, c3 + 1.4, .6), glideT0: c3 + 1.4 }, t);
+  }
+  function frameSplit(t) { const split = ramp(t, .2, 2.2), a1 = ramp(t, cue(6, 3), 1.2), tF = along(6, 3, .51), tQ = along(6, 3, .75);
+    graph.position.x = -68 * split; fg.position.x = 68 * split;
+    graphState({ lift: 1, gA: split, revSt: 1.2, revGr: 1.2, revRg: 1.2, revIntra: 1.2, revInter: 1.2, edgeA: .7, gridA: .4, gridMix: 1, regA: .16, pulseA: a1, pulseRev: Math.floor(t / 3.2) % 2 === 1, plateA: .9 * split }, t);
+    fgState({ grow: 1, surfA: 1, beamA: .3, wob: ramp(t, tF, 1), modeA: [0, 1, 2].map(i => .55 * ramp(t, tF + i * .3, .8)), modeY: [0, 1, 2].map(i => H_LAT + AMP + 8 + i * 8),
+      probe: p => ramp(t, tQ + p.t0, .4), probeDrop: p => ramp(t, tQ + p.t0, .5), glide: ramp(t, tQ + 1, .8), glideT0: tQ + 1, plateA: .9 * split }, t);
+  }
+  function frame(p, t) {
+    graph.visible = fg.visible = false; graph.position.x = fg.position.x = 0;
+    ground.material.opacity = p === 6 ? 1 - ramp(t, .2, 1.6) : 1; ground.visible = ground.material.opacity > .003;
+    if (p === 1 || p === 2) frameGraph(p, t); else if (p === 5) frameFg(t); else if (p === 6) frameSplit(t);
+    placeCam(p, t); bloom.strength = p === 5 ? .6 : .75;
+    composer.render();
+  }
+  // ── 3D 위의 글자 (#hud) ──
+  function hud(p, t) {
+    if (p === 1 || p === 2) { const c1 = cue(1, 1), lift = p === 1 ? ramp(t, c1 + .5, 2.4) : 1 - ramp(t, cue(2, 3) - 2.6, 1.3);
+      const la = p === 1 ? ramp(t, c1 + 1.6, 1) : 1 - ramp(t, cue(2, 3) - 2.9, .8), fuse = p === 2 ? ramp(t, cue(2, 2) + .4, 2.6) : 0;
+      // 층 이름표 — 동쪽 가장자리 가운데에 붙이되, 서로 겹치거나 화면 아래로 빠지지 않게 줄 세운다
+      const labs = [[H_RG * lerp(1, (H_GR + .6) / H_RG, fuse), '5 km 광역 노드 — 넓은 배경', '#fde68a', 1 - fuse], [H_GR, '1 km 격자 노드 — 국지', '#7dd3fc', 1], [0, '측정소 노드 — 관측', '#f9a8d4', 1]];
+      if (fuse > .01) labs.splice(2, 0, [H_GR, '→ 하나의 잠재공간 (1 km)', '#c4b5fd', fuse]);
+      const pos = labs.map(([h]) => proj(BW / 2 + 4, h * lift + .5, 0));
+      if (lift > .2 && pos.every(Boolean)) { let ys = pos.map(q => q[1]); for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + 34);
+        const over = ys[ys.length - 1] - (H - 140); if (over > 0) ys = ys.map(y => y - over);
+        labs.forEach(([, s, col, a], i) => hLabel(s, Math.min(pos[i][0] + 12, W - 250), ys[i], col, 14.5, la * a * clamp((lift - .2) / .4), 'left')); }
+      if (p === 1) { const c2 = cue(1, 2);
+        const hd = t < c1 + 3.8 ? ['노드 3종 — 측정소 · 1 km 격자 · 5 km 광역', '#e2e8f0'] : t < c2 ? ['층 안과 층 사이를 서로 다른 엣지로 — 이종 그래프', '#a3e635'] : ['AMR-HGN 의 뼈대 — 세 층의 이종 그래프', '#fde68a'];
+        sText(hd[0], W / 2, HEAD, hd[1], 22, ramp(t, c1 + .4, .8)); }
+      else { const c0 = cue(2, 0), cc1 = cue(2, 1), c2 = cue(2, 2), dn0 = along(2, 1, .42);
+        const hd = t < cc1 ? ['그래프 위로 정보가 흐른다', '#e2e8f0'] : t < dn0 ? ['모으기 — 격자 → 광역 · 측정소', '#fde68a'] : t < c2 ? ['퍼뜨리기 — 광역 · 측정소 → 다시 모든 격자로', '#7dd3fc']
+          : ['넓은 배경 + 좁은 국지 → 하나의 잠재공간에서 섞인다', '#c4b5fd'];
+        sText(hd[0], W / 2, HEAD, hd[1], 22, ramp(t, c0, .6)); } }
+    if (p === 5) { const c1 = cue(5, 1), c2 = cue(5, 2), c3 = cue(5, 3), tMode = along(5, 1, .52), tPr = along(5, 2, .38);
+      const hd = t < c1 ? ['FGNO — 격자 대신 연속된 장', '#c4b5fd'] : t < tMode ? ['흩어진 점 → 하나의 연속된 잠재장', '#7dd3fc'] : t < c2 ? ['파동 모드로 장 전체를 한꺼번에 — 연산자를 배운다', '#c4b5fd']
+        : t < c3 ? ['학습 — 측정소 몇 곳을 가리고, 그 자리를 예측', '#e2e8f0'] : ['원하는 좌표 어디서든 값을 읽는다 (설계)', '#fde68a'];
+      sText(hd[0], W / 2, HEAD, hd[1], 22, ramp(t, cue(5, 0), 1));
+      if (t > tMode && t < c2) ['긴 파동', '중간 파동', '짧은 파동'].forEach((s, i) => { const q = proj(-BW / 2 - 3, H_LAT + AMP + 10 + i * 9, -BD / 2); if (q) sText(s, q[0] - 6, q[1], ['#7dd3fc', '#c4b5fd', '#f9a8d4'][i], 13, ramp(t, tMode + i * .35 + .3, .5) * (1 - ramp(t, c2 - .7, .6)), 700, 'right'); });
+      const ma = ramp(t, c2 + .4, .8);
+      if (ma > .01 && t < c3 + 1) shells.forEach((q, i) => { const pr = ramp(t, tPr + .9 + i * .12, .5), s = proj(q.s.x, 7, q.s.z); if (!s) return;
+        if (pr < .9) sText('?', s[0], s[1], '#f8fafc', 16, ma * (1 - pr), 800); if (pr > .05) sText('✓', s[0] + 12, s[1] - 4, '#34d399', 17, pr * (1 - ramp(t, c3 + .4, .6)), 800); });
+      if (t > c2 && t < c3) sText('○ 가린 측정소   ● 남은 관측으로 예측한 값', W / 2, SUBL, '#cbd5e1', 14, ma, 600);
+      probes.forEach(p => { const a = ramp(t, c3 + .6 + p.t0, .4), s = proj(p.x, p.y + 3, p.z); if (s && a > .01) sText(`(${p.xk.toFixed(1)}, ${p.yk.toFixed(1)}) km`, s[0] + 10, s[1] - 12, '#fef3c7', 12.5, a, 600, 'left'); }); }
+    if (p === 6) { const q1 = proj(-68, H_RG + 8, -BD / 2), q2 = proj(68, H_LAT + AMP + 30, -BD / 2), a = ramp(t, 1.4, 1);
+      if (q1) sText('세 층 이종 그래프', q1[0], q1[1] - 14, '#fde68a', 15, a * .9); if (q2) sText('연속 잠재장 · 파동 모드', q2[0], q2[1] - 14, '#c4b5fd', 15, a * .9); }
+  }
+  return { size, frame, hud, orb };
+}
+
+// ═════════ 재생 상태 ═════════
+let phase = 0, tau = 0, playing = false, armed = false, speed = 1, preview = false;   // preview = 점검용(재생 중 화면처럼 자막 표시)
+// 멈춰 있을 때는 바뀐 것이 있을 때만 그린다 — 덱이 이 편을 숨은 프레임에 미리 받아 두는 동안 뒤에서
+// 매 프레임 그리면 덱과 같은 메인스레드를 잡아먹어 장 전환이 버벅인다(2026-09-25).
+let dirty = true;
+let narrOn = true, musicOn = true, musicVol = .6;
+const AUD = PH.map((_, p) => { const a = new Audio(`audio/gacrux/phase${p}.mp3`); a.preload = 'auto'; return a; });
+const bgm = new Audio('audio/배경음악/02_2편배경음악.mp4'); bgm.loop = true; bgm.preload = 'auto';
+const outro = () => phase === 6 && tau > DUR[6];   // 마지막 단계가 끝난 뒤 — 멈추지 않고 화면·음악이 이어진다
+function syncAudio() {
+  const want = tau - LEAD, a = AUD[phase];
+  AUD.forEach((x, i) => { if (i !== phase && !x.paused) x.pause(); });
+  const on = playing && armed && narrOn && want >= 0 && want < NDUR[phase] - .05;
+  if (on) { a.playbackRate = speed; if (a.paused) { try { a.currentTime = want; } catch (e) {} a.play().catch(() => {}); }
+    else if (Math.abs(a.currentTime - want) > .3) a.currentTime = want; }
+  else if (!a.paused) a.pause();
+  // 배경음악 — 재생 중에는 한 높이로(내레이션이 켜져 있으면 낮게 고정 — 쉼마다 오르내리지 않는다).
+  // 마지막 내레이션이 끝나면 5초에 걸쳐 천천히 올려 음악만으로 이어 간다
+  if (playing && armed && musicOn) { const base = musicVol * (narrOn ? .35 : 1), up = phase === 6 ? ramp(tau, LEAD + NDUR[6] + .6, 5) : 0;
+    bgm.volume = clamp(lerp(base, musicVol * .8, up)); if (bgm.paused) bgm.play().catch(() => {}); }
+  else if (!bgm.paused) bgm.pause();
+}
+function resetView() { userCam = null; if (G3) { G3.orb.yaw = G3.orb.pitch = 0; G3.orb.zoom = 1; } }
+function setPhaseTime(p, t) { const changed = p !== phase; phase = clamp(p, 0, 6); tau = clamp(t, 0, DUR[phase]); if (changed) { resetView(); AUD.forEach(a => a.pause()); } syncAudio(); ui(true); }
+function play() { armed = true; playing = true; syncAudio(); ui(true); }
+function pause() { playing = false; syncAudio(); ui(true); }
+function toggle() { playing ? pause() : play(); }
+function stopAll() { playing = false; resetView(); AUD.forEach(a => { a.pause(); try { a.currentTime = 0; } catch (e) {} }); bgm.pause(); try { bgm.currentTime = 0; } catch (e) {}
+  phase = 0; tau = 0; ui(true); }
+let last = performance.now();
+function loop(now) { const dt = Math.min(.1, (now - last) / 1000); last = now;
+  if (playing) { const a = AUD[phase];
+    if (armed && narrOn && !a.paused && a.currentTime > 0) tau = LEAD + a.currentTime; else tau += dt * speed;
+    if (phase < 6 && tau >= DUR[phase]) { phase++; tau = 0; resetView(); }
+    if (phase === 6 && tau > 1e5) tau = DUR[6];   // 아주 오래 틀어 둔 경우만 되감는다
+    syncAudio(); }
+  if (playing || dirty) { dirty = false; render(); ui(false); } requestAnimationFrame(loop); }
+function render() { palette(); const m = mix3(phase, tau);
+  setScr(); g.globalAlpha = 1; g.fillStyle = PAL.sea; g.fillRect(0, 0, W, H);
+  hx.setTransform(1, 0, 0, 1, 0, 0); hx.clearRect(0, 0, hudCv.width, hudCv.height);
+  if (m < .999) { HA = 1 - m; DRAW[phase](Math.min(tau, DUR[phase])); }
+  $('gl').style.opacity = m.toFixed(3);
+  if (m > .001) { G3.frame(phase, tau); HA = m; G3.hud(phase, tau); }
+  HA = 1; }
+
+// ═════════ 화면 요소 ═════════
+const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+$('phase-list').innerHTML = PH.map((p, i) => `<button class="phase-btn" data-p="${i}"><span class="num">${i}</span><span><span class="lb">${p.lb}${p.tag ? `<span class="tag">${p.tag}</span>` : ''}</span><span class="ds">${p.ds}</span></span></button>`).join('');
+document.querySelectorAll('.phase-btn').forEach(b => b.addEventListener('click', () => { armed = true; setPhaseTime(+b.dataset.p, 0); if (!playing) play(); }));
+START.slice(1).forEach(s => { const i = document.createElement('i'); i.className = 'tick'; i.style.left = (s / TOTAL * 100) + '%'; $('track').appendChild(i); });
+function setOp(el, a) { el.style.opacity = a.toFixed(3); }
+let lastKey = '';
+function ui(force) {
+  if (force) dirty = true;   // 상태가 바뀌었다 — 다음 프레임에 다시 그린다
+  const gt = START[phase] + Math.min(tau, DUR[phase]), f = gt / TOTAL * 100;
+  $('fill').style.width = f + '%'; $('handle').style.left = f + '%';
+  $('ptime').textContent = `${fmt(gt)} / ${fmt(TOTAL)}`;
+  const key = `${phase}|${playing}|${outro()}`;
+  if (force || key !== lastKey) { lastKey = key;
+    document.querySelectorAll('.phase-btn').forEach(b => b.classList.toggle('active', +b.dataset.p === phase));
+    $('plabel').textContent = outro() ? '끝 — 화면과 음악이 이어진다' : `${phase} / ${PH[phase].lb}`; $('play-btn').textContent = playing ? '❚❚ 일시정지' : '▶ 재생';
+    $('chip').innerHTML = PH[phase].chip; $('tc-k').textContent = `STAGE ${phase}`; $('tc-t').textContent = PH[phase].lb; }
+  setOp($('title-card'), win(tau, .1, 2.6, .5, .6));
+  const cs = CUES[phase]; let cur = -1; for (let i = 0; i < cs.length; i++) if (tau >= cs[i].t) cur = i;
+  const end = LEAD + NDUR[phase] + .3, cEnd = cur >= 0 && cur + 1 < cs.length ? cs[cur + 1].t : end;
+  const live = playing || preview; setOp($('chip'), live ? 0 : 1);   // 재생 중엔 자막만, 멈추면 설명 칩만 — 아래쪽이 겹치지 않게
+  const sub = $('subtitle'); if (live && cur >= 0 && tau < end) { const tx = disp(cs[cur].text); if (sub.textContent !== tx) sub.textContent = tx; setOp(sub, Math.min(ramp(tau, cs[cur].t - .05, .2), 1 - ramp(tau, cEnd - .15, .15))); } else setOp(sub, 0);
+  setOp($('banner'), phase === 6 ? ramp(tau, cue(6, 0), 1) : 0);
+  setOp($('lab-l'), phase === 6 ? ramp(tau, cue(6, 2), 1) : 0); setOp($('lab-r'), phase === 6 ? ramp(tau, cue(6, 2) + .4, 1) : 0);
+  const $l = $('lab-l'), $r = $('lab-r'); $l.style.left = G3 ? '30%' : '25%'; $r.style.left = G3 ? '70%' : '75%';
+  $('cbar').style.display = phase === 1 ? 'none' : 'block';
+  $('compass').style.display = phase === 0 || (phase === 2 && mix3(2, tau) < .5) ? 'flex' : 'none';
+}
+// 타임라인 끌기
+const pw = $('progress-wrap'), tip = $('tip');
+const gtFromEv = e => { const r = $('track').getBoundingClientRect(); return clamp((e.clientX - r.left) / r.width) * TOTAL; };
+const phaseOfGt = gt => { let p = 0; for (let i = 0; i < 7; i++) if (gt >= START[i]) p = i; return p; };
+let scrub = false;
+pw.addEventListener('pointerdown', e => { scrub = true; pw.setPointerCapture(e.pointerId); const gt = gtFromEv(e), p = phaseOfGt(gt); setPhaseTime(p, gt - START[p]); });
+pw.addEventListener('pointermove', e => { const gt = gtFromEv(e), p = phaseOfGt(gt), r = $('track').getBoundingClientRect();
+  tip.style.display = 'block'; tip.style.left = (e.clientX - r.left) + 'px'; tip.textContent = `${fmt(gt)} · 단계 ${p} ${PH[p].lb}`; if (scrub) setPhaseTime(p, gt - START[p]); });
+pw.addEventListener('pointerup', () => { scrub = false; }); pw.addEventListener('pointerleave', () => { tip.style.display = 'none'; });
+$('play-btn').addEventListener('click', toggle); $('stop-btn').addEventListener('click', stopAll);
+document.querySelectorAll('.speed-btn').forEach(b => b.addEventListener('click', () => { speed = +b.dataset.s; document.querySelectorAll('.speed-btn').forEach(x => x.classList.toggle('active', x === b)); syncAudio(); }));
+$('narr-on').addEventListener('change', e => { narrOn = e.target.checked; syncAudio(); });
+$('music-on').addEventListener('change', e => { musicOn = e.target.checked; syncAudio(); });
+$('music-vol').addEventListener('input', e => { musicVol = +e.target.value; syncAudio(); });
+$('theme-toggle').addEventListener('click', () => { const d = document.body.dataset.theme === 'dark'; document.body.dataset.theme = d ? 'light' : 'dark'; $('theme-toggle').textContent = d ? 'Go Dark Mode' : 'Go Light Mode'; dirty = true; });
+// 지도 확대·이동 — 사용자가 만지면 그 단계 동안 자동 카메라를 멈춘다. 3D 가 보일 때는 끌어 돌리고 휠로 다가간다
+const in3D = () => mix3(phase, tau) > .5;
+const zoomAt = (f, sx, sy) => { if (in3D()) { G3.orb.zoom = clamp(G3.orb.zoom * f, .35, 2.5); dirty = true; return; }
+  const c = { ...cam(phase, tau) }, s = H / c.vh, x = c.cx + (sx - W / 2) / s, y = c.cy - (sy - H / 2) / s;
+  c.vh = clamp(c.vh * f, 4, 900); const s2 = H / c.vh; c.cx = x - (sx - W / 2) / s2; c.cy = y + (sy - H / 2) / s2; userCam = c; dirty = true; };
+cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(Math.exp(e.deltaY * .0012), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+let drag = null;
+cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, c: { ...cam(phase, tau) }, three: in3D(), o: G3 ? { ...G3.orb } : null }; cv.setPointerCapture(e.pointerId); cv.classList.add('drag'); });
+cv.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (drag.three) { G3.orb.yaw = drag.o.yaw - dx * .25; G3.orb.pitch = clamp(drag.o.pitch + dy * .2, -80, 80); dirty = true; return; }
+  const s = H / drag.c.vh; userCam = { ...drag.c, cx: drag.c.cx - dx / s, cy: drag.c.cy + dy / s }; dirty = true; });
+cv.addEventListener('pointerup', () => { drag = null; cv.classList.remove('drag'); });
+$('zin').addEventListener('click', () => zoomAt(.67, W / 2, H / 2)); $('zout').addEventListener('click', () => zoomAt(1.5, W / 2, H / 2));
+$('zreset').addEventListener('click', () => { resetView(); dirty = true; });
+addEventListener('resize', () => { resize(); dirty = true; });
+
+// ═════════ 덱 계약 — 무장 전에는 소리·자동 진행 없음. Enter·▶ = 재생/일시정지, Esc = 정지 + 부모에 닫기 요청 ═════════
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.preventDefault(); armed = false; stopAll(); if (window.parent !== window) { try { parent.postMessage({ deck: 'film-close' }, '*'); } catch (err) {} } return; }
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+}, true);
+addEventListener('message', e => { const d = e.data; if (!d || typeof d !== 'object') return;
+  if (d.film === 'stop') { armed = false; stopAll(); } else if (d.film === 'play') toggle(); });
+window.__latent = { setPhaseTime, get state() { return { phase, tau, playing, armed, TOTAL, DUR, outro: outro(), mix3: mix3(phase, tau), gl: !!G3, narr: AUD.some(a => !a.paused), bgm: !bgm.paused, bgmVol: bgm.volume }; },
+  render, set preview(v) { preview = !!v; }, setTau(t) { tau = t; dirty = true; } };   // 점검 스크립트용
+
+resize(); palette(); ui(true); requestAnimationFrame(loop);
+setTimeout(() => { G3 = makeG3(); resize(); dirty = true; }, 60);
+// 예열 — 처음 3D 로 넘어가는 순간(셰이더 컴파일)과 3D→2D 순간(캐시 준비)에 재생이 멎지 않게, 로드 뒤 쉬는 틈에
+// 그 장면들을 한 번씩 그려 둔다. 같은 작업 안에서 원래 상태로 되돌려 다시 그리므로 화면에는 나오지 않는다.
+// 덱이 숨은 프레임에 받아 두는 동안에도 돌므로 한 번에 몰지 않고 0.35초씩 띄운다. 이미 재생 중이면 하지 않는다.
+[[1, cue(1, 1) + 3.5], [2, cue(2, 1) + 1], [5, cue(5, 2) + 1.2], [6, 12], [2, cue(2, 3) + .3]].forEach(([p, t], i) => setTimeout(() => {
+  if (armed || playing) return; const keep = [phase, tau]; phase = p; tau = t;
+  try { render(); } finally { [phase, tau] = keep; render(); dirty = true; } }, 1200 + 350 * i));
+})();
+</script>
+</body>
+
+</html>
