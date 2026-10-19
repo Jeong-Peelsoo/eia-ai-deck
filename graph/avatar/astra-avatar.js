@@ -1,4 +1,4 @@
-/* ASTRA 로봇 진행자 v3 — 덱용 그림 합성기(2026-10-16, 5장). Cubism 모델이 아니다.
+/* ASTRA 로봇 진행자 v3 — 덱용 그림 합성기(2026-10-16, 15장 · 46장 전신 원화가 없을 때). Cubism 모델이 아니다.
  * 그림 = scripts/build_avatar_assets.py 가 v2 · v3 원화로 만든 '몸 프레임'(graph/avatar/body/, 정수리 ~ 허벅지)과
  *        '머리 층'(graph/avatar/head/, 고개 각도 c · l15 · l30 · r15 · r30 · d10 × 입 모양), 머리 가림(head-mask.webp), 자리표(astra_meta.js).
  * 그리기 — 몸 프레임을 그리고, 그 몸의 머리 자리(ASTRA_META.bodies)를 가림으로 지운 뒤, 지금 고개 · 입 모양의 머리 층을 얹는다.
@@ -33,6 +33,7 @@
         ...Object.keys(M.bodies).map(n => ld(base + 'body/' + n + '.webp').then(im => this.body[n] = im)),
         ...M.heads.map(n => ld(base + 'head/' + ((M.files && M.files[n]) || n) + '.webp').then(im => this.head[n] = im)),
         ld(base + 'head-mask.webp').then(im => this.mask = im)]).then(() => this.draw());
+      this.ready.catch(e => console.warn('AstraAvatar — 그림을 받지 못했다', e && e.target && e.target.src));   // 처리 안 된 거부를 남기지 않고 원인을 콘솔에 남긴다(2026-10-19 점검)
     }
     now(){ return (performance.now() - this.t0) / 1000; }
     path(a, b){ const down = (TW[a] || []).slice().reverse(), up = TW[b] || [];
@@ -66,7 +67,7 @@
       this.lean += ((LEAN[this.pose] || 0) - this.lean) * .06;
       g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
       const by = Math.sin(t * 1.45) * 1.6, rot = (Math.sin(t * .5) * .35 + this.lean) * Math.PI / 180;
-      // 인사(bow 0–1, 35장 '감사합니다', 2026-10-16) — 골반을 축으로 윗몸을 세로로 조금 눌러 앞으로 숙인 원근을 낸다. 고개 숙임(d10) · 가슴에 손은 부르는 쪽이 함께 건다
+      // 인사(bow 0–1, 46장 '감사합니다', 2026-10-16) — 골반을 축으로 윗몸을 세로로 조금 눌러 앞으로 숙인 원근을 낸다. 고개 숙임(d10) · 가슴에 손은 부르는 쪽이 함께 건다
       this.bw = (this.bw || 0) + ((this.bow || 0) - (this.bw || 0)) * .07;
       g.translate(W / 2, H * .82); g.rotate(rot); g.scale(1 - .015 * this.bw, 1 - .085 * this.bw); g.translate(-W / 2, -H * .82 + by);
       const fu = ease((t - this.tf) / FR);

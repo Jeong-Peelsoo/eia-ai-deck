@@ -1,10 +1,10 @@
-/* 전신 원화 로봇 재생기 — 46장 맺음 진행자(2026-10-18 사용자 지시: Live2D/source/full-body-v4 전신 원화로 바꾸고, '감사합니다' 에 배꼽인사 — 인사 뒤 춤은 같은 날 뺐다).
+/* 전신 원화 로봇 재생기 — 46장 맺음 진행자(2026-10-18 사용자 지시: Live2D/source/full-body-v4 전신 원화로 바꾸고, '감사합니다' 에 감사 인사 — thanks-* 프레임).
    자산 — graph/avatar/fullbody/(scripts/build_fullbody_frames.py 가 굽는다) · window.FULLBODY_META(fullbody_meta.js).
    AstraAvatar 와 같은 사용법을 받는다 — ready · start() · stop() · setPose(이름) · vis(입 모양 문자) · smile · bow · setAngle() · slowHead.
      setPose — 예전 포즈 이름(right-index-up 등)이나 프레임 이름을 받아 0.08초 교차 페이드로 바꾼다.
      vis    — '.' 다문 입 · A a E I O U m. 머리 픽셀이 원본인 프레임(meta head)에만 입 조각을 덧그린다(인사 · 미소 프레임에는 안 그린다).
      smile  — 1 이면 다문 입일 때 부드러운 미소 얼굴 조각을 덧그린다. 눈은 3–5초마다 깜빡인다(머리 원본 프레임만).
-     bow    — 1 을 넣으면 배꼽인사(15° → 30° 머묾 → 15° → 밝은 미소)를 한 번 한다. 도는 동안 busy 가 참이고 setPose 는 무시한다(끝나면 미소 차렷).
+     bow    — 1 을 넣으면 감사 인사(아래 BOW — 가슴에 손 → 무릎 살짝 굽힘 → 일어섬 → 손 폄)를 한 번 한다. 도는 동안 busy 가 참이고 setPose 는 무시한다(끝나면 미소 차렷 → 마무리).
      _final  — 인사 뒤 마무리 동작(팔짱 · 생각 · 갸우뚱 · 윙크)을 차렷 휴식과 번갈아 되풀이한다. 장을 떠나거나 cancel() 하면 멈춘다.
      숨쉬기 — 모든 프레임에 늘 건다(2026-10-19 사용자 지시 — 한 장으로 아주 작게). 골반선(Y_HIP) 아래는 그대로, 위(배 ~ 머리)는 골반선을 축으로
               세로로 LIFT px 만큼 늘였다 줄인다(BREATH 초 주기). 머리 꼭대기가 최대 LIFT px, 어깨가 그 6할쯤 오르내린다. 그림 한 장이라 잔상이 없고,
@@ -16,8 +16,7 @@
     'right-index-up': '1h-index-up', 'right-point-down-left': '1h-point-down-sl', 'right-count-two': '1h-count-two',
     'right-count-three': '1h-count-three', 'both-hands-sphere': '2h-sphere', 'both-hands-spread': '2h-spread',
     'fingertips-steeple': '2h-steeple', 'hand-on-chest': '1h-hand-on-chest' };
-  // 배꼽인사 — [프레임, 머무는 초]. 2026-10-18 사용자 지시로 인사 뒤 춤은 뺐다. 인사 → 밝은 미소 → 미소 차렷.
-  // 2026-10-19 사용자 지시 — 배꼽인사(greet-bow-15 · 30)를 가볍게 인사하는 6장(dynamic-motion-v2/thanks-*)으로 바꿨다.
+  // 감사 인사 — [프레임, 머무는 초]. 2026-10-19 사용자 지시로 가볍게 인사하는 6장(dynamic-motion-v2/thanks-*)을 쓴다.
   //   가슴에 손 → 무릎 살짝 굽힘 → 일어서며 손 폄(0.95초, 46장이 '감사합니다' 앞 쉼에서 미리 건다) → 편 자세로 말하고 미소(입은 thanks-a · i 를 끼운다)
   const BOW = [['thanks-chest', .3], ['thanks-dip', .4], ['thanks-rise', .25], ['thanks-open', 2.4]];
   const BOW_LEAD = .95;   // 편 자세까지 걸리는 초 — 46장이 말소리보다 이만큼 먼저 bow 를 건다
@@ -62,7 +61,7 @@
     }
     // 마무리 동작 — busy 가 아니다(내레이션 루프가 끝나 rest() 를 부를 수 있게). 그동안 setPose 는 무시하고 cancel() · stop() 만 끊는다
     _final(wait){
-      this.finalOn = true; let t = wait;
+      this.finalOn = true; this.timers = []; let t = wait;   // 앞 순서의 예약은 모두 끝났다 — 질의응답 동안 배열이 쌓이지 않게 비운다(2026-10-19 점검)
       FINAL.forEach(([f, d]) => { this.timers.push(setTimeout(() => this._go(f, 0), t * 1000)); t += d; });
       this.timers.push(setTimeout(() => { this._go('face-neutral', 0); this._final(IDLE_GAP); }, t * 1000));
     }
