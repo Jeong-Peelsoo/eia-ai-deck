@@ -161,6 +161,11 @@
   /* 발 우측은 **쪽 번호 자리**다(2026-08-18 지시) — 마크업에서는 비워 두고 맨 아래 스크립트가
      `현재 / 전체` 를 찍는다. 문구를 적어 넣어도 그릴 때 덮인다.
      ⚠ nowrap — '9 / 9' 가 접히면 발이 두 줄이 되어 본문을 위로 민다(머리와 같은 이유). */
+  /* 1장 발 좌측 — 전체 화면 단추 · 안내(2026-10-19 사용자 지시, 웹 게시본은 창 크기에 따라 무대가 줄어든다). 전체 화면이 되면 걷는다 */
+  .foot .fsnote{display:inline-flex;align-items:center;gap:12px;transition:opacity .3s}
+  .fsbtn{font:inherit;font-weight:700;color:#fff;background:var(--accent);border:0;border-radius:999px;padding:5px 16px;cursor:pointer;line-height:1.3}
+  .fsbtn:hover{filter:brightness(1.1)}
+  :fullscreen .foot .fsnote{opacity:0;pointer-events:none}
   .foot .r{color:var(--mut);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 
   .body{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;
@@ -1956,7 +1961,7 @@
       </div>
     </div>
   </div>
-  <div class="foot"><span></span>
+  <div class="foot"><span class="fsnote"><button type="button" class="fsbtn" id="fs-go">⛶ 전체 화면 (F11)</button>전체 화면으로 보아야 화면이 바르게 나온다</span>
     <span class="r"></span></div>
 </section>
 
@@ -5015,6 +5020,9 @@
   document.getElementById('latent-go')?.addEventListener('click', e => { e.stopPropagation(); openFilm(); });
   document.getElementById('intro-go') ?.addEventListener('click', e => { e.stopPropagation(); openFilm(); });
   document.getElementById('film-go')  ?.addEventListener('click', e => { e.stopPropagation(); openFilm(); });
+  // 1장 전체 화면 단추(2026-10-19) — F11 과 같은 효과. 브라우저가 막으면 아무 일도 하지 않는다
+  document.getElementById('fs-go')    ?.addEventListener('click', e => { e.stopPropagation(); e.currentTarget.blur();
+    if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => {}); });
   document.getElementById('emuv')     ?.addEventListener('click', e => { e.stopPropagation(); openFilm(); });
 
   /* ── 11장 네 모델 애니메이션 — 물질 탭 셋. 그 장에 있을 때만 튼다(숨은 장에서 영상 셋이 돌면 전환이 버벅인다).
