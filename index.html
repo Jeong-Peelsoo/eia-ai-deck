@@ -166,7 +166,12 @@
   .foot .fsnote{display:inline-flex;align-items:center;gap:12px;transition:opacity .3s}
   .fsbtn{font:inherit;font-weight:700;color:#fff;background:var(--accent);border:0;border-radius:999px;padding:5px 16px;cursor:pointer;line-height:1.3}
   .fsbtn:hover{filter:brightness(1.1)}
-  :fullscreen .foot .fsnote{opacity:0;pointer-events:none}
+  :fullscreen .foot .fsnote, body.isfs .foot .fsnote{opacity:0;pointer-events:none}
+  /* 오른쪽 위 전체 화면 단추(2026-10-19 사용자 지시) — 전체 화면이 아닐 때 모든 장에 늘 보이고, 전체 화면(단추 · F11)이면 걷는다(body.isfs) */
+  .fsfab{position:fixed;top:10px;right:12px;z-index:70;font:600 15px/1.2 var(--f);color:#fff;background:var(--accent);border:0;border-radius:999px;
+    padding:6px 14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18);opacity:.92;transition:opacity .3s}
+  .fsfab:hover{opacity:1;filter:brightness(1.1)}
+  body.isfs .fsfab{display:none}
   .foot .r{color:var(--mut);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 
   .body{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;
@@ -1508,7 +1513,7 @@
     html,body{overflow:visible;height:auto}
     #stage{position:static;transform:none !important;width:1600px !important;height:auto !important;overflow:visible}
     .slide{position:relative;opacity:1;visibility:visible;height:900px;page-break-after:always}
-    .nav,#film,#film-close,#bigvid{display:none}
+    .nav,#film,#film-close,#bigvid,.fsfab{display:none}
     *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
   /* ── 5–11장 이식 — 한일기술사회 덱 ⑤–⑪장(2026-10-18 사용자 지시) ─────────────────────────────
@@ -4200,6 +4205,7 @@
   <span>🗣 나레이션</span><input type="range" min="0" max="100" step="5" value="100" data-k="narr" aria-label="나레이션 볼륨"><b data-k="narr">100</b>
   <span class="sep">♪ 배경음</span><input type="range" min="0" max="100" step="5" value="25" data-k="bgm" aria-label="배경음악 볼륨"><b data-k="bgm">25</b>
 </div>
+<button type="button" class="fsfab" id="fs-fab" title="전체 화면으로 보아야 화면이 바르게 나온다">⛶ 전체 화면 (F11)</button>
 <nav class="nav" aria-label="장 이동">
   <button class="pv" type="button" aria-label="이전 장"><span class="tri"></span></button>
   <span class="pg"><b id="cur">1</b> / <span id="tot">15</span></span>
@@ -5022,8 +5028,13 @@
   document.getElementById('intro-go') ?.addEventListener('click', e => { e.stopPropagation(); openFilm(); });
   document.getElementById('film-go')  ?.addEventListener('click', e => { e.stopPropagation(); openFilm(); });
   // 1장 전체 화면 단추(2026-10-19) — F11 과 같은 효과. 브라우저가 막으면 아무 일도 하지 않는다
-  document.getElementById('fs-go')    ?.addEventListener('click', e => { e.stopPropagation(); e.currentTarget.blur();
-    if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => {}); });
+  // 오른쪽 위 단추(#fs-fab)도 같다. 전체 화면 여부 — 단추(Fullscreen API) · display-mode · 창 = 화면 크기(F11)를 함께 본다
+  const fsToggle = e => { e.stopPropagation(); e.currentTarget.blur();
+    if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => {}); };
+  ['fs-go', 'fs-fab'].forEach(k => document.getElementById(k)?.addEventListener('click', fsToggle));
+  const fsSync = () => document.body.classList.toggle('isfs', !!document.fullscreenElement || matchMedia('(display-mode: fullscreen)').matches
+    || (Math.abs(innerWidth - screen.width) <= 2 && Math.abs(innerHeight - screen.height) <= 2));
+  addEventListener('resize', fsSync); document.addEventListener('fullscreenchange', fsSync); fsSync();
   document.getElementById('emuv')     ?.addEventListener('click', e => { e.stopPropagation(); openFilm(); });
 
   /* ── 11장 네 모델 애니메이션 — 물질 탭 셋. 그 장에 있을 때만 튼다(숨은 장에서 영상 셋이 돌면 전환이 버벅인다).
