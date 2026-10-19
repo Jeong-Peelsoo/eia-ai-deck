@@ -61,8 +61,8 @@
 <!-- ?v= — 판 표시(2026-10-19). 웹 게시본에서 브라우저가 옛 메타(c-a.webp 를 찾던 판)를 붙들어 로봇이 안 그려졌다. 머리 층 · 메타를 다시 구우면 날짜를 바꾼다 -->
 <script src="graph/avatar/astra_meta.js?v=20261019"></script>
 <script src="graph/avatar/astra-avatar.js?v=20261019"></script>
-<script src="graph/avatar/fullbody/fullbody_meta.js"></script>   <!-- 46장 전신 원화 진행자(2026-10-18) — scripts/build_fullbody_frames.py -->
-<script src="graph/avatar/fullbody-avatar.js"></script>
+<script src="graph/avatar/fullbody/fullbody_meta.js?v=20261019c"></script>   <!-- 46장 전신 원화 진행자(2026-10-18) — scripts/build_fullbody_frames.py -->
+<script src="graph/avatar/fullbody-avatar.js?v=20261019c"></script>
 <script src="graph/audio/concept/concept_narr.js"></script>
 <script src="graph/thx_layers.js"></script>
 <script src="graph/arch_compare.js"></script>   <!-- 30장 우측 그림 아래 판(실제 수도권 NO₂ 1km) -->
@@ -2301,7 +2301,7 @@
          지향점으로 닫는다. 문장마다 한 줄은 그대로 지킨다(꼬리 줄 규율).
          ⚠ 받은 원문의 `지향 향하는` 은 겹말이라 `지향하는` 으로 적었다. -->
     <p class="thread">고해상도 산출이 소수 집단의 역량에만 머무르면 디지털 전환은 새로운 격차가 된다.<br>이 다섯
-      단계가 지향하는 것은 기술 자체도 중요하지만 <b>누구도 소외되지 않는 환경정보</b>를 생산하는 것이다.</p>
+      단계가 지향하는 것은 기술 자체도 중요하지만 SDGs 관점에서 <b>누구도 소외되지 않는 환경정보</b>를 생산하는 것이다.</p>
   </div>
   <div class="foot"><span>도입 영상이 던진 물음을 대기질 연구의 순서로 옮기면 이 다섯 단계가 된다</span>
     <span class="r"></span></div>
@@ -4032,7 +4032,7 @@
       <div class="rcol fg">
         <div class="rt"><b>FGNO</b><span class="stag">기초연구 단계</span></div>
         <p class="rs">함수형 생성 신경 연산자 — 흩어진 관측을 연속된 장으로 펼치고, 장 전체가 바뀌는 규칙을 배운다</p>
-        <div class="flow"><span>불규칙 관측</span><span>GNO<small>그래프 연산자 인코더</small></span><span>연속 잠재장<small>푸리에 처리기</small></span><span>GNO<small>임의 좌표 디코더</small></span></div>
+        <div class="flow"><span>불규칙 관측</span><span>GNO<small>그래프 연산자 인코더</small></span><span>연속 잠재장<small>FNO 처리기</small></span><span>GNO<small>임의 좌표 디코더</small></span></div>
         <ol class="rl">
           <li><b>결정론 전국 1km</b><span>현재 — 관측소와 격자의 접점을 유지하며 전역 처리기를 견준다</span></li>
           <li><b>확률화</b><span>하나의 지도 대신 공간적으로 일관된 여러 농도장을 만든다 · 분포 점수로 학습 · 평가</span></li>
@@ -7903,7 +7903,9 @@
         if (at >= 0) {
           let si = 0; I.cues.forEach((c, n) => { if (at >= c) si = n; });
           let act = null; PLAN[s].forEach(a => { if (a[0] <= si) act = a; });
-          if (act) { A.setPose(act[1]); if (act[2] === 'bow' && !A.bow) { A.bow = 1; A.slowHead = true; A.setAngle('d10'); } }   // 인사 — 고개는 천천히(0.45초) 숙인다
+          if (act) { A.setPose(act[1]); if (act[2] === 'bow' && !A.bow) { A.bow = 1; A.slowHead = true; A.setAngle('d10'); } }
+          // 전신 재생기의 감사 인사(2026-10-19)는 손을 펴기까지 BOW_LEAD 초가 걸린다 — 그 문장보다 먼저 걸어 '감사합니다'가 편 자세에 맞게 한다
+          if (FB && !A.bow && window.FullBodyAvatar.BOW_LEAD) PLAN[s].forEach(a => { if (a[2] === 'bow' && I.cues[a[0]] !== undefined && at >= I.cues[a[0]] - window.FullBodyAvatar.BOW_LEAD) A.bow = 1; });   // 인사 — 고개는 천천히(0.45초) 숙인다
           A.vis = I.vis ? (I.vis[Math.floor(at * 25)] || '.') : '.'; A.smile = 0;
         }
         // 전신 재생기는 배꼽인사 · 춤이 끝날 때까지(busy) 기다린다 — 그 전에 rest() 로 끊지 않는다(2026-10-18)

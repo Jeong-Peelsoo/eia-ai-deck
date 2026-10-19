@@ -125,6 +125,42 @@ window.FULLBODY_META = {
    "head": false,
    "group": "dynamic-motion-v2",
    "feet_shift_px": 0
+  },
+  "thanks-chest": {
+   "src": "frames/thanks-chest.webp",
+   "head": false,
+   "group": "dynamic-motion-v2",
+   "feet_shift_px": 0
+  },
+  "thanks-dip": {
+   "src": "frames/thanks-dip.webp",
+   "head": false,
+   "group": "dynamic-motion-v2",
+   "feet_shift_px": 7
+  },
+  "thanks-rise": {
+   "src": "frames/thanks-rise.webp",
+   "head": false,
+   "group": "dynamic-motion-v2",
+   "feet_shift_px": 0
+  },
+  "thanks-open": {
+   "src": "frames/thanks-open.webp",
+   "head": false,
+   "group": "dynamic-motion-v2",
+   "feet_shift_px": 0
+  },
+  "thanks-a": {
+   "src": "frames/thanks-a.webp",
+   "head": false,
+   "group": "dynamic-motion-v2",
+   "feet_shift_px": 0
+  },
+  "thanks-i": {
+   "src": "frames/thanks-i.webp",
+   "head": false,
+   "group": "dynamic-motion-v2",
+   "feet_shift_px": 0
   }
  },
  "patches": {
@@ -200,5 +236,11 @@ window.FULLBODY_META = {
   "O": "talk-o",
   "U": "talk-u",
   "m": "talk-m"
+ },
+ "thanks_mouth": {
+  "x": 372.66,
+  "y": 117.97,
+  "w": 59.38,
+  "h": 37.5
  }
 };

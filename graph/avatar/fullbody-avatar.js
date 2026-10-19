@@ -6,6 +6,9 @@
      smile  — 1 이면 다문 입일 때 부드러운 미소 얼굴 조각을 덧그린다. 눈은 3–5초마다 깜빡인다(머리 원본 프레임만).
      bow    — 1 을 넣으면 배꼽인사(15° → 30° 머묾 → 15° → 밝은 미소)를 한 번 한다. 도는 동안 busy 가 참이고 setPose 는 무시한다(끝나면 미소 차렷).
      _final  — 인사 뒤 마무리 동작(팔짱 · 생각 · 갸우뚱 · 윙크)을 차렷 휴식과 번갈아 되풀이한다. 장을 떠나거나 cancel() 하면 멈춘다.
+     숨쉬기 — 모든 프레임에 늘 건다(2026-10-19 사용자 지시 — 한 장으로 아주 작게). 골반선(Y_HIP) 아래는 그대로, 위(배 ~ 머리)는 골반선을 축으로
+              세로로 LIFT px 만큼 늘였다 줄인다(BREATH 초 주기). 머리 꼭대기가 최대 LIFT px, 어깨가 그 6할쯤 오르내린다. 그림 한 장이라 잔상이 없고,
+              입 · 눈 조각도 같은 양만큼 옮겨 덧그린다. 이음은 정수 픽셀의 골반선 한 줄뿐이다.
      cancel() — 인사 · 마무리를 멈추고 차렷으로. setAngle · slowHead 는 이 재생기에서 쓰지 않는다(원화에 머리 각도 층이 없다). */
 (function(){
   const POSE = {   // 예전 AstraAvatar 포즈 이름 → 전신 프레임(46장 PLAN 몸짓표)
@@ -14,7 +17,10 @@
     'right-count-three': '1h-count-three', 'both-hands-sphere': '2h-sphere', 'both-hands-spread': '2h-spread',
     'fingertips-steeple': '2h-steeple', 'hand-on-chest': '1h-hand-on-chest' };
   // 배꼽인사 — [프레임, 머무는 초]. 2026-10-18 사용자 지시로 인사 뒤 춤은 뺐다. 인사 → 밝은 미소 → 미소 차렷.
-  const BOW = [['greet-bow-15', .35], ['greet-bow-30', 1.5], ['greet-bow-15', .35], ['expr-bright-smile', 1.6]];
+  // 2026-10-19 사용자 지시 — 배꼽인사(greet-bow-15 · 30)를 가볍게 인사하는 6장(dynamic-motion-v2/thanks-*)으로 바꿨다.
+  //   가슴에 손 → 무릎 살짝 굽힘 → 일어서며 손 폄(0.95초, 46장이 '감사합니다' 앞 쉼에서 미리 건다) → 편 자세로 말하고 미소(입은 thanks-a · i 를 끼운다)
+  const BOW = [['thanks-chest', .3], ['thanks-dip', .4], ['thanks-rise', .25], ['thanks-open', 2.4]];
+  const BOW_LEAD = .95;   // 편 자세까지 걸리는 초 — 46장이 말소리보다 이만큼 먼저 bow 를 건다
   // 2026-10-18 사용자 지적 — 이전 동작 잔상이 길다. 0.18 → 0.08초로 줄이고, 이전 프레임 투명도를 처음부터 빠르게 떨어뜨린다((1-u)³)
   // 인사 뒤 마무리(2026-10-18 사용자 지시) — 팔짱 → 턱에 손가락 → 곰곰이 생각(갸웃 · 눈 위로) → 차렷 → 갸우뚱 → 윙크 → 밝은 미소.
   //   46장은 질의응답 동안 오래 머무므로, 차렷으로 IDLE_GAP 초 쉬었다가 되풀이한다. 잔상이 없게 페이드 없이 바꾼다(인사와 같다)
@@ -22,6 +28,9 @@
     ['expr-cute-tilt', 1.6], ['expr-cute-wink', .9], ['expr-bright-smile', 1.6]];
   const IDLE_GAP = 8;
   const FADE = .08;
+  const BREATH = 4.2;   // 숨 한 번(들숨 + 날숨) 초
+  const LIFT = 2.5;     // 머리 꼭대기가 오르는 최대 px(캔버스 800 × 1200 기준 — 무대 1600 에서 약 1.7 px). '아주 작게'(사용자 지시)
+  const Y_HIP = 576;    // 골반선(캔버스 y) — 정면 원화 사타구니 높이 약 740 / 1536
 
   class FullBodyAvatar {
     constructor(cv, base){
@@ -60,12 +69,27 @@
     cancel(){ this.timers.forEach(clearTimeout); this.timers = []; this.finalOn = false; this.busy = false; this._bow = 0; this._latch = false; this._go('face-neutral', FADE); }
     start(){ if (this.raf) return; const tick = () => { this._draw(); this.raf = requestAnimationFrame(tick); }; this.raf = requestAnimationFrame(tick); }
     stop(){ cancelAnimationFrame(this.raf); this.raf = 0; this.cancel(); this.prev = null; this.cur = 'face-neutral'; this._draw(true); }
-    _frame(f, a){
+    // 숨 — 지금 머리 꼭대기가 오른 양(px). 0.25 px 칸으로 끊는다(바뀔 때만 다시 그리는 규율 — 초당 열 번 안팎)
+    _lift(){ return Math.round(LIFT * (.5 - .5 * Math.cos(performance.now() / 1000 / BREATH * Math.PI * 2)) * 4) / 4; }
+    // 그림 한 장을 숨 쉰 꼴로 — 골반선 아래는 그대로, 위는 [0, Y_HIP] → [-l, Y_HIP] 로 늘인다
+    _blit(im, l){ const g = this.g, W = this.cv.width, H = this.cv.height, sy = im.naturalHeight / H, yh = Y_HIP;
+      if (!l) { g.drawImage(im, 0, 0, W, H); return; }
+      g.drawImage(im, 0, yh * sy, im.naturalWidth, (H - yh) * sy, 0, yh, W, H - yh);
+      g.drawImage(im, 0, 0, im.naturalWidth, yh * sy, 0, -l, W, yh + l); }
+    _dy(y, l){ return -l * (1 - y / Y_HIP); }   // 캔버스 y 에 있던 점이 숨으로 옮겨 간 양
+    _frame(f, a, l){
+      if (f === 'thanks-open') {   // 편 자세로 말할 때 — 입 자리만 아(A a O U) · 이(I E) 프레임으로 바꿔 끼운다
+        const g = this.g, im = this.img[f], v = this.vis, k = 'AaOU'.includes(v) ? 'thanks-a' : 'IE'.includes(v) && v ? 'thanks-i' : null, r = this.M.thanks_mouth;
+        if (!im || !im.naturalWidth) return; g.globalAlpha = a; this._blit(im, l);
+        const mi = k && this.img[k]; if (mi && mi.naturalWidth && r) { const dy = this._dy(r.y + r.h / 2, l);
+          g.save(); g.beginPath(); g.rect(r.x, r.y + dy, r.w, r.h); g.clip(); g.clearRect(r.x, r.y + dy, r.w, r.h);
+          this._blit(mi, l); g.restore(); }
+        return; }
       const g = this.g, im = this.img[f]; if (!im || !im.naturalWidth) return;
-      g.globalAlpha = a; g.drawImage(im, 0, 0, this.cv.width, this.cv.height);
+      g.globalAlpha = a; this._blit(im, l);
       if (!this.M.frames[f].head) return;
       const now = performance.now(), P = this.M.patches;
-      const put = k => { const p = P[k], pi = this.img['p:' + k]; if (p && pi && pi.naturalWidth) g.drawImage(pi, p.x, p.y, p.w, p.h); };
+      const put = k => { const p = P[k], pi = this.img['p:' + k]; if (p && pi && pi.naturalWidth) g.drawImage(pi, p.x, p.y + this._dy(p.y + p.h / 2, l), p.w, p.h); };
       const m = this.M.vis[this.vis];
       if (m) put(m); else if (this.smile) put('gentle');
       if (now < this.blinkUntil) put('blink');
@@ -77,16 +101,18 @@
       if (now > this.blinkAt) { this.blinkUntil = now + 130; this.blinkAt = now + 3000 + Math.random() * 2000; }
       const u = this.prev ? Math.min(1, (now - this.t0) / 1000 / this.fade) : 1;
       const loaded = Object.values(this.img).filter(im => im.complete).length;
-      const sig = [this.cur, this.prev && u < 1 ? u : '', this.M.vis[this.vis] || '', this.smile, now < this.blinkUntil, loaded].join('|');
+      const sig = [this.cur, this.prev && u < 1 ? u : '', this.M.vis[this.vis] || '', this.smile, now < this.blinkUntil, loaded, this._lift()].join('|');
       if (!force && sig === this._sig) return;
       this._sig = sig;
       g.clearRect(0, 0, this.cv.width, this.cv.height);
       // 새 프레임을 먼저 온전히 그리고, 이전 프레임을 위에서 걷어 낸다 — 반대로 하면 페이드 끝에 옛 팔 · 손이 '툭' 사라진다
-      this._frame(this.cur, 1);
-      if (this.prev && u < 1) this._frame(this.prev, Math.pow(1 - u, 3));
+      const l = this._lift();
+      this._frame(this.cur, 1, l);
+      if (this.prev && u < 1) this._frame(this.prev, Math.pow(1 - u, 3), l);
       if (u >= 1) this.prev = null;
       g.globalAlpha = 1;
     }
   }
+  FullBodyAvatar.BOW_LEAD = BOW_LEAD;
   window.FullBodyAvatar = FullBodyAvatar;
 })();
