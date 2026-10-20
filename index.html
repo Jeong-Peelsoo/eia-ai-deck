@@ -603,6 +603,104 @@
   .gcroll .tr i{background:#24333F} .gcroll .tr i.on{background:#90C31F}
   .gcroll .ce.on{border-color:#90C31F;color:#90C31F}
   .gcroll small{grid-column:1 / -1;text-align:center;font-size:14px;font-weight:500;color:#9FB0BC}
+  /* 27-1장(#wnslide) WeatherNext 3 모식도(2026-10-20) — 검은 판에 입력 · 처리 · 출력 세 칸. 캔버스 없이 글 상자로 그린다 */
+  .vzp.wn3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr) minmax(0,1.25fr);grid-template-rows:auto minmax(0,1fr) auto;column-gap:30px;row-gap:12px;padding:18px 22px 14px;color:#E6EDF3}
+  .wn3 .wnh{grid-column:1 / -1;font-size:20px;font-weight:700;letter-spacing:-.01em}
+  .wn3 .wnin,.wn3 .wnmid,.wn3 .wnout{position:relative;display:flex;flex-direction:column;justify-content:center;gap:12px}
+  .wn3 i{font-style:normal;font-size:15px;font-weight:600;color:#9FB0BC;letter-spacing:.04em}
+  .wn3 .wnb{border:1.5px solid #3A4A57;border-radius:4px;padding:9px 12px;background:#16232F;display:flex;flex-direction:column;gap:2px}
+  .wn3 .wnb b{font-size:18px;line-height:1.3;letter-spacing:-.02em}
+  .wn3 .wnb span{font-size:15px;line-height:1.35;color:#C9D3DA}
+  .wn3 .wnb.sat{border-color:#5EA2EF}
+  .wn3 .wnb.core{border:2px solid #90C31F;padding:16px 14px;text-align:center}
+  .wn3 .wnb.core b{font-size:21px;color:#90C31F;margin-bottom:4px}
+  .wn3 .wnb em{font-style:normal;font-family:'Inter',var(--f);font-size:20px;font-weight:700;color:#90C31F}
+  .wn3 .wnb.r5{border-color:#FD6925} .wn3 .wnb.r5 em{color:#FD6925}
+  .wn3 .wnb.r10{border-color:#3FA4DA} .wn3 .wnb.r10 em{color:#3FA4DA}
+  .wn3 .wnb.r25{border-color:#FD9D24} .wn3 .wnb.r25 em{color:#FD9D24}
+  .wn3 .wnmid::before,.wn3 .wnout::before{content:"";position:absolute;left:-26px;top:50%;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:13px solid #9FB0BC;transform:translateY(-50%)}
+  #wnslide .rl li span em{font-style:normal;font-weight:700;color:var(--accent)}   /* 2026-10-20 사용자 지시 — 4번 핵심 구절 강조 */
+  /* 27-2장(#auslide) Microsoft Aurora(2026-10-20 고쳐 씀) — 좌 Aurora 자체(영상 화면 · 사전학습 · 미세조정 · 1.5) · 우 독립 검증 셋 · 아래 띠 */
+  .aug{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:30px;align-items:start}
+  .aul,.aur{display:flex;flex-direction:column;gap:10px}
+  .auk{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;border-top:2px solid var(--ink);padding-top:8px;font-size:21px;font-weight:700;letter-spacing:-.02em}
+  .auk .org{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:500;color:var(--dim)}
+  .auk .org img{height:20px;width:auto;display:block}
+  .aufig{margin:0}
+  .aufig img{display:block;width:100%;height:auto}
+  #auslide .aufig img{width:56%}
+  #auslide .aubar{flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:18px;margin-top:12px}
+  .aufig figcaption{margin-top:4px;font-size:15px;color:var(--dim)}
+  #auslide .aul .rl li span em{font-style:normal;font-weight:700;color:var(--accent)}
+  #auslide .aur .rl li span em{font-style:normal;font-weight:700;color:#d32f2f}
+  .aubar{margin-top:16px;background:#0F1620;color:#E6EDF3;padding:12px 20px;display:flex;flex-direction:column;gap:3px}
+  .aubar b{font-size:23px;letter-spacing:-.02em;color:#90C31F} .aubar span{font-size:19px;line-height:1.4}
+  .aunote{margin:6px 0 0;font-size:15px;color:var(--dim)}
+  /* 27-3장(#ecslide) ECMWF 현업 AI 예보(2026-10-20) — 두 카드(AIFS 현업 · AIFS-COMPO 실험) · 아래 공통 구조 띠와 해석 상자 */
+  .ecg{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:24px;align-items:stretch}
+  .ecc{background:var(--soft);border-top:5px solid var(--blue);padding:10px 16px 12px}
+  .ecc.co{border-top-color:var(--brand)}
+  .ech{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+  .ech b{font-size:27px;letter-spacing:-.02em} .ech span{font-size:17px;color:var(--dim)}
+  .ech em{margin-left:auto;font-style:normal;font-size:15px;font-weight:700;color:#fff;padding:2px 10px;border-radius:3px;background:var(--blue)}
+  .ech em.ex{background:#c2410c}
+  .ecc ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+  .ecc li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px;align-items:baseline;font-size:19px;line-height:1.4;color:var(--mut);border-top:1px solid var(--hair);padding-top:4px}
+  .ecc li i{font-style:normal;font-weight:700;font-size:18px;color:var(--ink)}
+  #ecslide .ecc li em{font-style:normal;font-weight:700;color:var(--accent)}   /* 2026-10-20 사용자 지시 — 계산 줄 강조 */
+  .ecc li.lim{color:#b91c1c;font-weight:600} .ecc li.lim i{color:#b91c1c}
+  .ecb{margin-top:14px;display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:24px;align-items:stretch}
+  .ecarch{background:#0F1620;color:#E6EDF3;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+  .ecarch span{width:100%;font-size:15px;color:#9FB0BC;font-weight:600}
+  .ecarch b{font-size:19px;padding:3px 9px;border:1.5px solid #90C31F;border-radius:3px;color:#90C31F}
+  .ecarch i{font-style:normal;color:#9FB0BC}
+  .ecarch small{width:100%;font-size:17px;color:#C9D3DA;line-height:1.35}
+  #ecslide .lit{margin-top:0;border-left-color:var(--brand);background:var(--soft)} #ecslide .lit b{color:var(--accent)}
+  #ecslide .lit span{font-size:19px}
+  /* 27-7장(#tlslide) 연대기(2026-10-20) — 6열 시간축(2020–21 · 2022 … 2026) × 세계 · 한국 두 줄 */
+  .tlg{display:grid;grid-template-columns:64px .8fr 1fr .9fr 1.1fr 1.15fr 1.25fr;column-gap:8px;row-gap:6px;align-items:stretch}
+  .tlg .ty{font-family:'Inter',var(--f);font-size:20px;font-weight:800;color:var(--ink);border-bottom:3px solid var(--ink);padding-bottom:2px}
+  .tlg .tp{font-size:15px;font-weight:700;color:#fff;background:var(--blue);padding:3px 10px;border-radius:3px;text-align:center}
+  .tlg .tp.air{background:var(--brand)}
+  .tlg .tlab{font-size:18px;font-weight:800;color:var(--dim);align-self:start;padding-top:6px}
+  .tlg .tlab.kr{color:var(--accent)}
+  .tlg .tcell{display:flex;flex-direction:column;gap:4px;background:var(--soft);padding:6px;min-height:40px}
+  .tc{font-size:16.5px;line-height:1.3;color:var(--ink);border-left:4px solid var(--blue);background:#fff;padding:3px 7px}
+  .tc i{font-style:normal;font-family:'Inter',var(--f);font-weight:700;color:var(--dim);margin-right:6px}
+  .tc.a{border-left-color:var(--brand)}
+  .tc.op{font-weight:700} .tc.op::after{content:" ●";color:#c2410c}
+  .tc.hi{background:var(--accent);color:#fff;font-size:19px;font-weight:800;border-left-color:var(--accent);padding:6px 9px} .tc.hi i{color:#E6EDF3}
+  .tleg{display:flex;flex-wrap:wrap;gap:4px 22px;margin:8px 0 0 72px;font-size:15px;color:var(--mut)}
+  .tleg i{display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:-2px;background:var(--blue)} .tleg i.a{background:var(--brand)} .tleg b{color:#c2410c} .tleg .dim{color:var(--dim)}
+  #tlslide .lit.tlo{margin-top:12px;border-left-color:var(--brand);background:var(--soft);display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:4px 18px} #tlslide .lit.tlo>b{grid-row:1 / 3} #tlslide .lit.tlo>strong{grid-column:2}
+  #tlslide .lit.tlo b{color:var(--accent);font-size:19px} #tlslide .lit.tlo strong{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+  #tlslide .tlcmp{display:flex;flex-direction:column;gap:1px;font-size:17px;color:var(--mut);line-height:1.4} #tlslide .tlcmp i{font-style:normal;font-weight:800;color:var(--ink);margin-right:10px}
+  #tlslide .lit.tlo strong em{font-style:normal;color:var(--accent);margin-right:6px}
+  #tlslide .lit.tlo strong u{text-decoration:none;background:var(--accent);color:#fff;padding:0 8px;border-radius:3px}
+  /* 27-4장(#usslide) 미국 NOAA · NASA(2026-10-20) — 27-3장 카드 꼴을 세 칸으로 */
+  .ecg.us{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+  .ecg.us .ecc li{grid-template-columns:auto minmax(0,1fr);font-size:18px}
+  .ecg.us .ecc li i{white-space:nowrap}
+  .ecc.na{border-top-color:#64748b}
+  .ecc li.nt{color:var(--ink);font-weight:600}
+  #usslide .lit.usl,#cnslide .lit.usl{margin-top:14px;border-left-color:var(--brand);background:var(--soft)} #usslide .lit b,#cnslide .lit b{color:var(--accent)} #usslide .lit span,#cnslide .lit span{font-size:19px}
+  #cnslide .ech{flex-wrap:wrap;row-gap:0} #cnslide .ech b,#cnslide .ech em{white-space:nowrap} #cnslide .ech>span{order:3;flex-basis:100%;font-size:16px}   /* 이름 · 표지가 접히지 않게 설명은 아래 줄로 */
+  .cnpg{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px;margin:-6px 0 10px;background:#0F1620;color:#E6EDF3;padding:8px 16px}   /* 27-5장 Pangu 띠 */
+  .cnpg b{font-size:19px;color:#90C31F;white-space:nowrap} .cnpg span{font-size:17px;line-height:1.4}
+  #krslide .lit.usl{margin-top:14px;border-left-color:var(--brand);background:var(--soft)} #krslide .lit b{color:var(--accent);font-size:21px} #krslide .lit span{font-size:19px;line-height:1.5}
+  #krslide .ech{flex-wrap:wrap;row-gap:0} #krslide .ech b,#krslide .ech em{white-space:nowrap} #krslide .ech>span{order:3;flex-basis:100%;font-size:16px}
+  #krslide .ecc li em{font-style:normal;font-weight:700;color:var(--accent)}
+  #krslide .krop{display:flex;flex-direction:column;gap:0;margin-top:0} #krslide .krop span{font-size:19px;color:var(--mut)} #krslide .krop span b{display:inline;margin-right:14px}   /* 발표자 의견 — 두 줄 배경 + 강조 띠(2026-10-20) */
+  #krslide .krvs{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;gap:12px;margin-top:8px}   /* 이론 모델 → AI 모델 대비(2026-10-20) */
+  #krslide .kv{display:flex;align-items:center;gap:12px;padding:8px 14px;border:2px solid #94a3b8;background:#fff}
+  #krslide .kv b{font-size:20px;color:var(--ink);white-space:nowrap} #krslide .kv span{flex:1;font-size:17px;color:var(--mut);line-height:1.35}
+  #krslide .kv em{font-style:normal;font-size:15px;font-weight:800;color:#fff;background:#64748b;padding:3px 10px;border-radius:3px;white-space:nowrap}
+  #krslide .kv.new{border-color:var(--accent);background:#eef7ee} #krslide .kv.new b{color:var(--accent)} #krslide .kv.new em{background:var(--accent)}
+  #krslide .kvarr{font-style:normal;align-self:center;font-size:34px;font-weight:800;color:var(--accent)}
+  #krslide .krop strong{display:block;margin-top:10px;background:#0F1620;color:#fff;font-size:30px;line-height:1.3;font-weight:800;letter-spacing:-.02em;padding:12px 20px;border-left:8px solid #90C31F}
+  #krslide .krop strong u{text-decoration:none;background:#90C31F;color:#0F1620;padding:0 10px;border-radius:4px} #krslide .krop strong small{display:inline;font-size:30px;color:#90C31F;font-weight:800}
+  #cnslide .ecc li em{font-style:normal;font-weight:700;color:var(--accent)}   /* 27-5장(2026-10-20) — 계산 줄 강조, 27-3장과 같은 꼴 */
+  .wn3 .wnfoot{grid-column:1 / -1;font-size:15px;color:#9FB0BC;border-top:1px solid #2A3A46;padding-top:8px}
   /* ── 45장(#okslide) 현업화의 성공 요인 (2026-10-14) — 좌 세 원 교집합(상징) · 우 협업 흐름 + 더 갖출 성공 요인 ───────── */
   .okg{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr);gap:30px;align-items:center}
   .okv svg{display:block;width:100%;height:auto;max-height:430px}
@@ -654,8 +752,8 @@
   .divider.on .dfn{animation:dvUp .8s cubic-bezier(.2,.7,.2,1) .17s both}
   .dvl .dl{margin:26px 0 0;padding:14px 0 0;list-style:none;border-top:2px solid var(--ink);display:flex;flex-direction:column;gap:4px}
   .dvl .dl.two{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;row-gap:4px}   /* 장이 일곱 이상이면 두 단(4절 장 목록이 진행 띠를 밟았다) */
-  .dvl .dl li{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:baseline;font-size:19px;line-height:1.38;color:var(--ink)}
-  .dvl .dl li b{font-size:18px;color:var(--dc);font-variant-numeric:tabular-nums}
+  .dvl .dl li{display:grid;grid-template-columns:54px minmax(0,1fr);gap:8px;align-items:baseline;font-size:19px;line-height:1.38;color:var(--ink)}
+  .dvl .dl li b{font-size:18px;color:var(--dc);font-variant-numeric:tabular-nums;white-space:nowrap}   /* 덧장 번호 '27-1' 이 접히지 않게(2026-10-20) */
   .divider.d2 .dl li b{color:#5E8A0F}   /* 라임은 흰 지면 글자로 대비가 모자라 한 단 짙게 */
   .dvl .dp{position:absolute;left:calc(var(--sp) + var(--mx));right:48px;bottom:56px;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
   .dvl .dp span{border-top:5px solid var(--gray-l);padding-top:6px;font-size:15px;line-height:1.25;color:var(--dim);font-weight:500}
@@ -3214,6 +3312,291 @@
     <span class="r"></span></div>
 </section>
 
+<!-- 27-1장(#wnslide) 사례 3 WeatherNext 발전 (2026-10-20 신설, 사용자 지시) — GraphCast → GenCast → WeatherNext 2 → 3, 그리고 WN3 의 관측 학습 · 다중 해상도.
+     쪽 번호는 '27-1'(data-sub) — 뒤 장 번호를 밀지 않는다(아래 '쪽 번호' 스크립트).
+     ⚠ 확인한 원문만 쓴다 — 근거 문장 위치는 sources.md '27-1장'. 사용자가 준 요약 중 원문에서 확인 못 한 것
+       (WN2 '그래프 트랜스포머', 'GenCast 보다 8배 빠름' — 블로그는 비교 대상을 적지 않았다)은 넣지 않았다.
+     오른쪽 판은 이 덱이 그린 모식도다(논문 그림 아님). 성능 수치는 넣지 않았다. -->
+<section class="slide" id="wnslide" data-sub="1">
+  <div class="head"><span class="rh"><span class="n c3">3</span>설계 철학</span>
+    <span class="r">사례 3 · WeatherNext 의 발전</span></div>
+  <div class="body">
+    <h2 class="htop">구글 딥마인드 <em>전지구 기상 예보 AI</em> 발전과정<span class="sub">관측을 배우고 여러 해상도로 낸다 — 결정론 그래프에서 확률 생성으로, 재분석 격자에서 위성 · 관측소로</span></h2>
+    <div class="vz">
+      <div class="vzt">
+        <div class="org"><img src="image/logo/google_deepmind.svg" alt="Google DeepMind"><b>WeatherNext</b><span data-ref="weathernext3"></span></div>
+        <ol class="rl">
+          <li><b>GraphCast · 2023</b><span>그래프 신경망 · 결정론 예보 하나 — 0.25° · 6시간 걸음</span></li>
+          <li><b>GenCast · 2024</b><span>확산모델 · 잡음을 거듭 다듬어 50개 앙상블 — 0.25° · 12시간 걸음</span></li>
+          <li><b>WeatherNext 2 · 2025</b><span>FGN(함수 생성 신경망) · 모델 안에 잡음을 넣어 64개 앙상블 — 0.25° · 6시간 걸음</span></li>
+          <li><b>WeatherNext 3 · 2026</b><span>FGN 메쉬 트랜스포머 · <em>위성자료를 입력으로, 관측소 자료를 정답으로 학습 — 1시간 걸음</em> · 5 / 10 / 25 km</span></li>
+        </ol>
+        <div class="lit"><b>AMR-HGN 과 닿는 곳 (발표자 해석)</b><span>희소한 관측소를 정답으로 학습 · 해상도가 다른 출력을 한 모델에서 — 측정소 · 1 km 격자 · 5 km 광역을 한 그래프로 묶는 방향과 같은 흐름</span><small>다만 기상 5 km 예측과 1 km 대기오염장 복원은 다른 문제</small></div>
+      </div>
+      <div class="vzr">
+        <div class="vzp wn3">
+          <div class="wnh">WeatherNext 3 — 위성자료 입력 · 관측소 정답자료 학습 · 다중 해상도 출력</div>
+          <div class="wnin">
+            <i>입력</i>
+            <div class="wnb sat"><b>정지궤도 위성 모자이크</b><span>11채널 · 0.1° · 1시간마다 실시간</span></div>
+            <div class="wnb"><b>분석장</b><span>ECMWF HRES</span></div>
+          </div>
+          <div class="wnmid">
+            <i>처리</i>
+            <div class="wnb core"><b>FGN<br>메쉬 트랜스포머</b><span>정이십면체 공유 메쉬</span><span>잡음 주입 → 64개 앙상블</span><span>15일 예보</span></div>
+          </div>
+          <div class="wnout">
+            <i>출력 — 다중 해상도</i>
+            <div class="wnb r5"><em>~5 km</em><b>관측소 헤드 · 0.05°</b><span>2 m 기온 · 이슬점 — 관측소 자료로 학습</span></div>
+            <div class="wnb r10"><em>~10 km</em><b>지상 단일층 · 0.1°</b><span>일사 · 구름량 등</span></div>
+            <div class="wnb r25"><em>~25 km</em><b>기압면(상층) · 0.25°</b><span>바람 등 3차원 변수</span></div>
+          </div>
+          <div class="wnfoot">학습 정답 — 분석장 · 위성 강수(IMERG 등) · 관측소 2 m 기온 · 이슬점 &nbsp;|&nbsp; 1시간마다 새 예보(하루 24회)</div>
+        </div>
+        <div class="vzfoot"><span>모식도 — 구조는 WeatherNext 3 원문(arXiv 2609.03582 §2.2–2.3) · Google 개발자 문서 기준</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>격자에서 관측으로 — 해상도가 다른 출력을 한 모델에 넣는다.</span>
+    <span class="r"></span></div>
+</section>
+
+<!-- 27-2장(#auslide) 사례 4 · Microsoft Aurora (2026-10-20 신설 · 같은 날 고쳐 씀, 사용자 지시) — 좌 Aurora 자체(사전학습 · 과제별 미세조정 · 1.5) · 우 후속 독립 검증 요약, 아래 띠.
+     처음 판은 '홍보(좌) 대 반박(우)' 구도라 Aurora 를 깎아내리는 느낌이라는 사용자 평에 따라, 모델 소개를 앞세우고 검증은 '남은 과제'로 줄였다.
+     좌 그림 = Microsoft Research Aurora 소개 영상(YouTube) 한국어 자막 화면, 사용자 제공 캡처(image/aurora_promo_youtube.jpg). 자막 인용 상자는 뺐다.
+     ⚠ 확인한 원문만 쓴다 — sources.md '27-2장'. Aurora = Bodnar 외(2025) Nature · Aurora 1.5 = Weyn 외(2026-07-09) Microsoft 프리프린트(DOI 없음) · 검증 = Hu 외(2026) arXiv 2607.20778. -->
+<section class="slide" id="auslide" data-sub="2">
+  <div class="head"><span class="rh"><span class="n c3">3</span>설계 철학</span>
+    <span class="r">사례 4 · Microsoft Aurora</span></div>
+  <div class="body">
+    <h2 class="htop">Microsoft <em>지구시스템 파운데이션 모델</em> — 과제별 미세조정<span class="sub">Aurora — 한 번 크게 사전학습하고 대기질 · 해양파 · 태풍 · 고해상도 기상 과제마다 미세조정한다</span></h2>
+    <div class="aug">
+      <div class="aul">
+        <div class="auk">Aurora — 사전학습 한 번, 과제마다 미세조정
+          <span class="org"><img src="image/logo/microsoft.svg" alt="">Aurora · <span data-ref="aurora"></span></span></div>
+        <figure class="aufig"><img src="image/aurora_promo_youtube.jpg" alt="Aurora 소개 영상 한국어 자막 화면">
+          <figcaption>Microsoft Research Aurora 소개 영상(YouTube) 한국어 자막 화면</figcaption></figure>
+        <ol class="rl">
+          <li><b>사전학습 · 2025</b><span>13억 파라미터 — ERA5 · CMIP6 · MERRA-2 · CAMS 등 100만 시간 넘는 지구물리 자료</span></li>
+          <li><b>과제별 미세조정 — 현업 모델과 같거나 나은 목표 비율</b><span><em>대기질 0.4° 74 %(CAMS 대비)</em> · 해양파 86 % · 태풍 경로 100 % · 기상 0.1° 92 %</span></li>
+          <li><b>Aurora 1.5 · 2026 — 기상용으로 다시 미세조정</b><span>1시간 간격 · 구름량 · 강수 추가 · 앙상블이 ECMWF ENS 를 목표 88.9 % 에서 앞섬(자체 평가)</span></li>
+        </ol>
+      </div>
+      <div class="aur">
+        <div class="auk">후속 독립 검증 — 남은 과제
+          <span class="org">Aurora Air Pollution · <span data-ref="aurora_mi"></span> 프리프린트</span></div>
+        <ol class="rl">
+          <li><b>1차 반응은 재현</b><span>NO · NO₂ 를 더하면 오존 감소 — 반응성 질소에 대한 1차 오존 반응</span></li>
+          <li><b>화학 제약은 아직 없음</b><span>NO · NO₂ 를 +5 ppb 올리면 지표 오존이 <em>음(−)의 농도</em>까지 하강</span></li>
+          <li><b>국지 고농도가 흐려짐</b><span>산불로 높아진 CO 구조를 CAMS 만큼 유지하지 못하고 배경 쪽으로 완화</span></li>
+          <li><b>내부는 화학보다 기상</b><span>내부 표현이 사전학습한 기상 구조 중심으로 조직 — VOC · 라디칼은 예측 변수에 없음</span></li>
+        </ol>
+      </div>
+    </div>
+    <div class="aubar"><b>점수와 메커니즘을 함께</b><span>높은 점수가 비선형 광화학 학습의 증거는 아님 — 화학 제약은 섭동 · 내부 분석으로 검증</span></div>
+    <p class="aunote">Aurora 1.5 — Weyn 외(2026) Microsoft 프리프린트(DOI 없음, 성능은 자체 평가). 오른쪽 검증은 동료심사 전 프리프린트 · 대상 Aurora Air Pollution 공개 체크포인트(0.4°).</p>
+  </div>
+  <div class="foot"><span>사전학습 한 번, 과제마다 미세조정 — 화학 메커니즘은 따로 검증한다.</span>
+    <span class="r"></span></div>
+</section>
+
+<!-- 27-3장(#ecslide) 사례 5 · ECMWF 현업 AI 예보 (2026-10-20 신설, 사용자 지시) — 기상 AIFS(현업) · 대기조성 AIFS-COMPO(실험) 두 카드 + 공통 구조 띠 + 해석 상자.
+     ⚠ 확인한 원문만 쓴다 — sources.md '27-3장'. 사용자가 준 요약 중 원문에서 확인 못 한 것(AIFS 6시간 걸음 · 15일 · 25–30 km)은
+       ECMWF 공지의 '격자 28 km'로 바꾸거나 넣지 않았다. -->
+<section class="slide" id="ecslide" data-sub="3">
+  <div class="head"><span class="rh"><span class="n c3">3</span>설계 철학</span>
+    <span class="r">사례 5 · ECMWF 현업 AI 예보</span></div>
+  <div class="body">
+    <h2 class="htop">유럽 ECMWF — 기상 AI 예보는 <em>현업</em>, 대기질 AI 예보는 <em>실험</em><span class="sub">유럽 현업 예보센터도 물리 모델 IFS 곁에 AI 예보를 함께 돌린다</span></h2>
+    <div class="ecg">
+      <div class="ecc">
+        <div class="ech"><b>AIFS</b><span>기상 · 전지구 중기 예보</span><em class="op">현업 운영</em></div>
+        <ul>
+          <li><i>운영</i>2025-02-25 AIFS Single 현업 · 2025-07-01 앙상블(AIFS ENS) — 물리 모델 IFS 와 나란히</li>
+          <li><i>구조</i>GNN 인코더 · 디코더 + 슬라이딩 윈도 트랜스포머 처리기</li>
+          <li><i>학습</i>ERA5 재분석 + ECMWF 현업 분석장</li>
+          <li><i>격자</i>약 28 km (IFS 9 km) · 오픈 데이터로 공개</li>
+        </ul>
+      </div>
+      <div class="ecc co">
+        <div class="ech"><b>AIFS-COMPO</b><span>대기조성 · 에어로졸 · 반응성 기체</span><em class="ex">실험 단계</em></div>
+        <ul>
+          <li><i>공개</i>2026-10-16 첫 10일 예보 차트 — 현업 CAMS(IFS-COMPO)를 보완하는 실험</li>
+          <li><i>구조</i>AIFS 기반 — 그래프 어텐션 인코더 · 디코더 + 트랜스포머 처리기</li>
+          <li><i>학습</i>CAMS EAC4 재분석(2003–2023) + CAMS 분석 · 예보(2019–2023)</li>
+          <li><i>예보</i>약 80 km · 3시간 걸음 · 187개 변수(PM2.5 · O₃ · NO₂ · SO₂ · CO · AOD …)</li>
+          <li><i>계산</i><em>5일 예보 GPU 1장 약 50초 — IFS-COMPO 는 CPU 8,000개로 약 1,000초</em></li>
+          <li><i>성능</i>AOD · PM2.5 는 여러 지역에서 오차가 작음 · 반응성 기체는 지역 · 물질에 따라 비슷하거나 엇갈림</li>
+          <li class="lim"><i>한계</i>시간에 따라 바뀌는 배출은 입력에 없음 — 배출 시나리오 예보는 아직</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ecb">
+      <div class="ecarch"><span>공통 구조</span><b>그래프 인코더</b><i>→</i><b>트랜스포머 처리기</b><i>→</i><b>그래프 디코더</b><small>방정식 적분 대신 수치모델의 분석 · 예보장에서 시간 발전을 학습</small></div>
+      <div class="lit"><b>환경영향평가에 주는 뜻 (발표자 해석)</b><span>AI 는 물리 모델의 대체가 아니라 보완 — CAMS 도 현업 IFS-COMPO 를 정확도 · 신뢰성의 기준으로 둠 · 전지구 AI 는 광역 배경장, AMR-HGN 은 측정소로 1 km 국지장 — 위아래 층으로 맞물림</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>현업은 이미 움직인다 — 물리 모델 곁에 AI 예보를 나란히 둔다.</span>
+    <span class="r"></span></div>
+</section>
+
+<!-- 27-4장(#usslide) 사례 6 · 미국 NOAA · NASA AI 예보 (2026-10-20 신설, 사용자 지시) — 세 카드(NOAA 기상 현업 · NASA · NOAA 대기질 DeepCTM) + 해석 상자.
+     27-3장의 카드 꼴(.ecc)을 그대로 쓴다. ⚠ 확인한 원문만 — sources.md '27-4장'. 요약 중 확인 못 한 것(AIGFS v1.1 · Nested-EAGLE ·
+     DeepCTM '배출 · 초기조건 민감도 산출 목표')은 넣지 않았거나 확인한 원문(EGU26 초록)의 표현으로 바꿨다. -->
+<section class="slide" id="usslide" data-sub="4">
+  <div class="head"><span class="rh"><span class="n c3">3</span>설계 철학</span>
+    <span class="r">사례 6 · 미국 NOAA · NASA AI 예보</span></div>
+  <div class="body">
+    <h2 class="htop">미국 NOAA · NASA —<br>기상 AI 예보는 <em>현업</em>, 대기질 AI 는 <em>현업 전환 중</em><span class="sub">NOAA 는 GraphCast 기반 AI 예보를 현업에 넣었고, 대기질 AI 는 CTM 을 흉내 내는 에뮬레이터를 현업 예보에 옮기는 중이다</span></h2>
+    <div class="ecg us">
+      <div class="ecc">
+        <div class="ech"><b>NOAA 기상</b><span>AIGFS · AIGEFS · HGEFS</span><em class="op">현업 운영</em></div>
+        <ul>
+          <li><i>운영</i>2025-12-17 세 모델 현업 개시</li>
+          <li><i>구조</i>Google DeepMind GraphCast 를 출발점으로 NOAA GDAS 분석장으로 미세조정</li>
+          <li><i>계산</i>AIGFS 16일 예보 약 40분 — 현업 GFS 계산 자원의 0.3 %</li>
+          <li><i>앙상블</i>AIGEFS 31개 · HGEFS = 물리 GEFS 31 + AI 31 = 62개 혼합</li>
+          <li class="lim"><i>한계</i>v1.0 은 태풍 강도 예보 저하 · 대기질은 예보하지 않음</li>
+        </ul>
+      </div>
+      <div class="ecc na">
+        <div class="ech"><b>NASA</b><span>파운데이션 모델 · 대기조성 예보</span></div>
+        <ul>
+          <li><i>Prithvi WxC</i>NASA · IBM (2024) — 23억 파라미터, MERRA-2 160개 변수 학습</li>
+          <li><i>쓰임</i>예보 · 다운스케일링 · 중력파 플럭스 등 — 모델과 미세조정 절차 공개(연구 모델)</li>
+          <li><i>GEOS-CF v2</i>2026-01 개시 · 전지구 25 km · 5일 대기조성 예보 · 위성 오존 동화</li>
+          <li class="nt"><i>주의</i>GEOS-CF 는 AI 가 아니라 물리 · 화학 기반 예보</li>
+        </ul>
+      </div>
+      <div class="ecc co">
+        <div class="ech"><b>NOAA 대기질</b><span>DeepCTM</span><em class="ex">현업 전환 중</em></div>
+        <ul>
+          <li><i>사업</i>NOAA 기상 프로그램국 FY25 과제 — DeepCTM 을 국가 대기질 예보(NAQFC, UFS)에 도입</li>
+          <li><i>모델</i>CTM 을 흉내 내는 딥러닝 에뮬레이터 — 배출 · 기상 · 초기 농도를 입력</li>
+          <li><i>노림</i>빠른 예보 · 관측 활용 · 더 고해상도 · 넓은 영역, 배출원 민감도 분석</li>
+          <li><i>단계</i>오프라인 시험에서 현업 전환으로 — 아직 운영 시스템은 아님</li>
+        </ul>
+      </div>
+    </div>
+    <div class="lit usl"><b>환경영향평가에 주는 뜻 (발표자 해석)</b><span>배출을 입력으로 받는 에뮬레이터 — '배출이 바뀌면 농도가 어떻게 바뀌나'를 빠르게 묻는 도구 · 27-3장 AIFS-COMPO 가 아직 못 하는 일, CMAQ 에뮬레이터 연구와 같은 방향</span></div>
+  </div>
+  <div class="foot"><span>기상은 현업 AI, 대기질은 에뮬레이터 — 배출을 입력으로 받는 쪽이 평가에 가깝다.</span>
+    <span class="r"></span></div>
+</section>
+
+<!-- 27-5장(#cnslide) 사례 7 · 중국 기상 · 대기질 AI 예보 (2026-10-20 신설, 사용자 지시 · 같은 날 Pangu-Weather 띠 추가) — Pangu 띠 + 세 카드(CMA 기상 현업 · AI-GAMFS 에어로졸 현업 · FuXi-Air 도시 실증) + 해석 상자.
+     27-4장의 카드 꼴(.ecg.us)을 그대로 쓴다. 한자는 쓰지 않는다(사용자 지시) — 모델 이름은 로마자 표기.
+     ⚠ 확인한 원문만 — sources.md '27-5장'. 요약 중 FengWu · FuXi 기상 · AI-Air · 베이징시 · 생태환경부 목표, Pangu '광둥성 2023-05 현업'은 넣지 않았다. -->
+<section class="slide" id="cnslide" data-sub="5">
+  <div class="head"><span class="rh"><span class="n c3">3</span>설계 철학</span>
+    <span class="r">사례 7 · 중국 기상 · 대기질 AI 예보</span></div>
+  <div class="body">
+    <h2 class="htop">중국 CMA —<br>기상 AI 예보는 <em>현업</em>, 대기질은 <em>에어로졸 AI 예보부터 현업</em><span class="sub">민간(Huawei)이 먼저 길을 열고, 기상청(CMA)이 대학 · 연구소와 만든 AI 예보를 현업에 넣었다 — 도시 대기질 AI 는 실증 중이다</span></h2>
+    <div class="cnpg"><b>민간이 먼저 — Huawei Pangu-Weather</b><span>2022-11 공개 · 2023-07 <span data-ref="pangu"></span> — 수치예보(IFS)보다 정확하다고 처음 보고 → 2023 중앙기상대 태풍 경로 예보 · ECMWF · 홍콩천문대 참고 예보</span></div>
+    <div class="ecg us">
+      <div class="ecc">
+        <div class="ech"><b>CMA 기상</b><span>FengQing · FengLei · FengShun</span><em class="op">현업 운영</em></div>
+        <ul>
+          <li><i>공개</i>2024-06-18 — 중단기 · 0–3시간 · 60일 계절</li>
+                    <li><i>운영</i>FengShun — 매일 100개 앙상블</li>
+          <li><i>2026-10</i>FengQing 앙상블 현업화 — 유효 예보 11.0일</li>
+          <li class="lim"><i>주의</i>성능은 CMA 측 검증 · 보도 기준</li>
+        </ul>
+      </div>
+      <div class="ecc">
+        <div class="ech"><b>AI-GAMFS</b><span>전지구 에어로졸 · <span data-ref="aigamfs"></span></span><em class="op">현업 운영</em></div>
+        <ul>
+          <li><i>운영</i>2025-01-20 — 국가기상센터 · 10개 넘는 성</li>
+          <li><i>구조</i>ViT + U-Net — MERRA-2 42년 · GEOS-FP 시작</li>
+          <li><i>예보</i>약 50 km · 5일 · 3시간 · 에어로졸과 기상</li>
+          <li><i>계산</i><em>5일 예보 GPU 1장 약 39초</em></li>
+          <li><i>성능</i>CAMS 보다 나은 측정소 AOD 61.6 % · 먼지 86 %</li>
+          <li class="lim"><i>한계</i>오존 · NO₂ 같은 기체는 예보하지 않음</li>
+        </ul>
+      </div>
+      <div class="ecc co">
+        <div class="ech"><b>FuXi-Air</b><span>도시 대기질 · <span data-ref="fuxiair"></span></span><em class="ex">실증 연구</em></div>
+        <ul>
+          <li><i>대상</i>베이징 · 상하이 · 선전 측정소 — 6개 물질 72시간</li>
+          <li><i>입력</i>FuXi 기상 예보 + 배출 인벤토리 + 측정소 관측</li>
+          <li><i>구조</i>셀프 어텐션 + 크로스 어텐션 결합</li>
+          <li><i>계산</i>72시간 예보 25–30초 — WRF-CMAQ 2–3시간</li>
+          <li><i>성능</i>상하이 PM2.5 · NO₂ · PM10 — CMAQ 보다 오차 8 · 12 · 8 % 작음</li>
+          <li class="nt"><i>주의</i>측정소 지점 예보 — 농도장은 내지 않음</li>
+        </ul>
+      </div>
+    </div>
+    <div class="lit usl"><b>AMR-HGN 과 닿는 곳 (발표자 해석)</b><span>관측 · 기상 · 배출을 어텐션으로 묶는 FuXi-Air — 점 · 격자 융합과 닮음 · 다만 측정소 미래 농도 예보로, 1 km 농도장 복원과는 다른 문제</span></div>
+  </div>
+  <div class="foot"><span>중국은 기상과 에어로졸에서 AI 예보를 현업에 넣었고, 도시 대기질 AI 는 실증 단계다.</span>
+    <span class="r"></span></div>
+</section>
+
+<!-- 27-6장(#krslide) 사례 8 · 한국 기상 · 대기질 AI 예보 (2026-10-20 신설, 사용자 지시) — 세 카드(기상청 기상 · 국립환경과학원 대기질 예보 · 국립환경과학원 위성 AI) + 제언 상자.
+     발표 대상이 국립환경과학원이라 마지막 상자는 '대기질 AI 예보 현업화를 이끄는 과학원 → 환경영향평가로 넓히면 평가 고도화' 제언(발표자 의견)으로 둔다.
+     ⚠ 확인한 원문만 — sources.md '27-6장'. 위성 AI 카드는 보도 경유(카드에 표시). -->
+<section class="slide" id="krslide" data-sub="6">
+  <div class="head"><span class="rh"><span class="n c3">3</span>설계 철학</span>
+    <span class="r">사례 8 · 한국 기상 · 대기질 AI 예보</span></div>
+  <div class="body">
+    <h2 class="htop">한국 —<br>기상 AI 예보는 <em>현업</em>, 대기질 AI 예보는 <em>현업 전환 준비</em><span class="sub">기상청은 AI 강수 예측을 예보에 쓰고 있고, 국립환경과학원은 대기질 예보를 수치에서 지능형으로 옮기는 전환을 이끌고 있다</span></h2>
+    <div class="ecg us">
+      <div class="ecc">
+        <div class="ech"><b>기상청</b><em class="op">현업 운영</em><span>NowAlpha · AI 기상 · 기후 파운데이션 모델</span></div>
+        <ul>
+          <li><i>운영</i>NowAlpha — 국내 첫 AI 초단기 강수 예측</li>
+          <li><i>예측</i>9년 학습 — 10분 단위 6시간을 40초에</li>
+          <li><i>2026-10</i>개선판 '나우알파 2025' 정식 활용</li>
+          <li><i>성능</i>강수 정확도 6.9 · 11.2 % 향상(0.5 · 5 mm/h)</li>
+          <li><i>다음</i>한국형 AI 파운데이션 모델 2026–2030</li>
+        </ul>
+      </div>
+      <div class="ecc co">
+        <div class="ech"><b>국립환경과학원 · 예보</b><em class="ex">현업 전환 준비</em><span>대기질통합예보센터 · 한국형 AI 대기질 모델</span></div>
+        <ul>
+          <li><i>2025-02</i>'한국형 AI 대기질 모델' 전략 — 수치 → 지능형</li>
+          <li><i>성과</i><em>AI 앙상블 초미세먼지 — 수치모델 대비 NMB 21.9 → 5.4 · NME 39.4 → 21.9</em></li>
+          <li><i>협업</i>관측 · 배출 · 기상 · 대기질 모델 · AI 분야를 한자리에</li>
+          <li><i>다음</i>현업 대기질 모델 중 · 장기 계획에 반영</li>
+        </ul>
+      </div>
+      <div class="ecc">
+        <div class="ech"><b>국립환경과학원 · 위성</b><em class="op">서비스</em><span>환경위성(GEMS) 초미세먼지 AI 추정</span></div>
+        <ul>
+          <li><i>2026-03</i>위성 + 기상 + 지상 관측 + 예측을 AI 로</li>
+          <li><i>공백</i>구름에 가린 지역도 관측 공백 없이 추정</li>
+          <li><i>속도</i>위성 관측 뒤 약 1시간 — 기존의 2배</li>
+          <li><i>다음</i>해상도 향상 · 24시간 연속 제공 · 오존으로 확대</li>
+          <li class="nt"><i>주의</i>보도 기준</li>
+        </ul>
+      </div>
+    </div>
+    <div class="lit usl"><div class="krop"><span><b>발표자 의견</b>기상청 · 국립환경과학원 — AI 예보 현업화 연구 · 서비스 독자 개발 진행</span><div class="krvs"><div class="kv old"><b>이론 기반 모델</b><span>개발 규모가 커 미국 EPA · 유럽 모델을 그대로 사용</span><em>장벽 높음</em></div><i class="kvarr">→</i><div class="kv new"><b>데이터 기반 AI 모델</b><span>진입장벽이 낮아 독자 개발 여지</span><em>장벽 낮음</em></div></div><strong>환경영향평가 예측 <u>한국형 AI 평가 모델</u> 독자 개발 가능 — <small>기초연구 발굴 · 기획 필요</small></strong></div></div>
+  </div>
+  <div class="foot"><span>예보를 위한 AI 농도장이 평가의 공통 기반이 될 때, 환경영향평가가 한 단계 올라선다.</span>
+    <span class="r"></span></div>
+</section>
+
+<!-- 27-7장(#tlslide) 기상 · 대기질 AI 연대기 2020–2026 (2026-10-20 신설, 사용자 지시) — 세계 · 한국 두 줄 시간축 + 단계 띠 + 전망 상자.
+     ⚠ 시점 근거 — 앞 덧장(27-1 ~ 27-6) sources.md 확인분, arXiv 번호(YYMM), 보도. sources.md '27-7장'. 단계 이름은 발표자 정리다. -->
+<section class="slide" id="tlslide" data-sub="7">
+  <div class="head"><span class="rh"><span class="n c3">3</span>설계 철학</span>
+    <span class="r">정리 · 기상 · 대기질 AI 연대기</span></div>
+  <div class="body">
+    <h2 class="htop">세계와 한국 — <em>기상 · 대기질 AI</em> 연대기 2020–2026<span class="sub">공개 · 현업 · 대기화학으로 — 한국은 독자 AI 기상 · 기후 파운데이션 모델로 다음 단계에 들어선다</span></h2>
+    <div class="tlg">
+      <div class="tlab"></div><div class="ty">2020–21</div><div class="ty">2022</div><div class="ty">2023</div><div class="ty">2024</div><div class="ty">2025</div><div class="ty">2026</div>
+      <div class="tlab"></div><div class="tp" style="grid-column:2 / 4">가능성 입증</div><div class="tp" style="grid-column:4 / 6">구조 혁신 · 파운데이션</div><div class="tp" style="grid-column:6 / 7">현업 전환</div><div class="tp air" style="grid-column:7 / 8">대기화학 확장</div>
+      <div class="tlab">세계</div><div class="tcell"><div class="tc w"><i>2020.03</i>MetNet · Google — 강수</div></div><div class="tcell"><div class="tc w"><i>02</i>FourCastNet · NVIDIA</div><div class="tc w"><i>11</i>Pangu-Weather · Huawei</div><div class="tc w"><i>12</i>GraphCast · DeepMind</div></div><div class="tcell"><div class="tc w op"><i>2023</i>Pangu — 중앙기상대 태풍 예보</div><div class="tc w"><i>12</i>GenCast · DeepMind</div></div><div class="tcell"><div class="tc a"><i>05</i>Aurora · Microsoft — 대기질까지</div><div class="tc w"><i>06</i>CMA FengQing · FengLei · FengShun</div><div class="tc w"><i>09</i>Prithvi WxC · NASA · IBM</div></div><div class="tcell"><div class="tc a op"><i>01</i>AI-GAMFS 에어로졸 운영</div><div class="tc w op"><i>02</i>ECMWF AIFS 현업</div><div class="tc w"><i>11</i>WeatherNext 2 · DeepMind</div><div class="tc w op"><i>12</i>NOAA AIGFS 현업</div></div><div class="tcell"><div class="tc a"><i>04</i>FuXi-Air 도시 대기질</div><div class="tc w"><i>07</i>Aurora 1.5</div><div class="tc w"><i>09</i>WeatherNext 3 · 위성 입력</div><div class="tc a"><i>10</i>ECMWF AIFS-COMPO 실험</div></div>
+      <div class="tlab kr">한국</div><div class="tcell"><div class="tc w"><i>2020</i>기상청 · KAIST AI 강수 공동 연구</div></div><div class="tcell"></div><div class="tcell"></div><div class="tcell"><div class="tc w"><i>03</i>KARINA · KIST 전지구 AI</div></div><div class="tcell"><div class="tc a"><i>02</i>과학원 한국형 AI 대기질 모델 전략</div><div class="tc w op"><i>05</i>NowAlpha 현업 적용</div></div><div class="tcell"><div class="tc a"><i>03</i>GEMS 초미세먼지 AI 추정</div><div class="tc w hi"><i>2026–30</i>기상청 독자 AI 기상 · 기후 파운데이션 모델</div></div>
+    </div>
+    <div class="tleg"><span><i class="w"></i>기상</span><span><i class="a"></i>대기질 · 에어로졸</span><span><b>●</b> 현업 운영 · 적용</span><span class="dim">월은 논문 · 모델 공개 또는 운영 시작</span></div>
+    <div class="lit usl tlo"><b>발표자 의견</b><div class="tlcmp"><span><i>세계</i>기상 AI 는 빅테크(NVIDIA · Huawei · DeepMind · Microsoft)가 먼저 공개 → 국가기관(ECMWF · NOAA · CMA)이 현업화 · 대기질은 국가기관 · 학계 주도</span><span><i>한국</i>기상청 · 국립환경과학원 · 출연연이 개발과 현업화를 함께 이끄는 국가 주도형</span></div><strong><em>전망</em> GEMS 정지궤도 환경위성 · 소형 위성 자료를 쓰는 <u>AI 독자 모델</u> 개발이 활발해질 것으로 예상</strong></div>
+  </div>
+  <div class="foot"><span>세계는 기상에서 대기화학으로 — 한국은 독자 AI 파운데이션 모델 개발로 다음 단계에 들어선다.</span>
+    <span class="r"></span></div>
+</section>
+
 <!-- 절 4 갑지 (2026-10-14 신설, 사용자 지시) — 장 목록 · 진행 띠 · 우측 그림은 맨 아래 '절 갑지' 스크립트가 채운다 -->
 <section class="slide divider d4" data-sec="4">
   <div class="dvl">
@@ -4746,12 +5129,16 @@
      장을 끼우거나 순서를 바꿀 때 아홉 곳이 조용히 어긋나기 때문이다 — 여기 한 곳만 진실이다.
      ⚠ 인쇄(build_pdf.py)·장별 캡처(shoot_slides.py)도 같은 문서를 크롬으로 여니 그대로 찍힌다.
        스크립트를 걷어 낸 사본으로 뽑으면 **발 우측이 통째로 빈다.** */
+  /* 덧장(data-sub="1" — 27-1장, 2026-10-20 사용자 지시)은 앞 장 번호에 '-1'을 붙이고 뒤 장 번호 · 전체 쪽수를 밀지 않는다.
+     원고 · 주석 · sources.md 의 'N장'이 그대로 맞게 하려는 것이다. 장 index(0-base, FILMS 키 등)는 덧장만큼 밀린다 */
+  const PNO = k => { let n = 0; for (let j = 0; j <= k; j++) if (!S[j].dataset.sub) n++; return S[k].dataset.sub ? `${n}-${S[k].dataset.sub}` : `${n}`; };
+  const TOT = S.filter(s => !s.dataset.sub).length;
   S.forEach((s, k) => {
     const r = s.querySelector('.foot .r');
-    if (r) r.textContent = `${k + 1} / ${S.length}`;
+    if (r) r.textContent = `${PNO(k)} / ${TOT}`;
   });
   const cur = document.getElementById('cur');
-  document.getElementById('tot').textContent = S.length;   // 전체 쪽수도 스크립트 한 곳에서
+  document.getElementById('tot').textContent = TOT;   // 전체 쪽수도 스크립트 한 곳에서
   const pv = document.querySelector('.nav .pv');
   const nx = document.querySelector('.nav .nx');
   const film = document.getElementById('film');
@@ -4778,7 +5165,7 @@
     /* preloadAt 은 0-base — 큐 두 장 전(2026-10-19 점검: 종전 1 이라 2–19장 내내 숨은 iframe 이 떠 11 · 15장 WebGL 과 함께 돌았다) */
     20: { video: 'video/NO2.mp4' },                                                    // 21장 우측 NO₂ 애니메이션 전체화면 (18초 반복)
     23: { src: 'graph/01-amr_hgn_design_concept.html', preloadAt: 23 },                 // 24장 설계 철학 다큐 (약 4분) — 그 장에 들어서면 받는다
-    33: { video: 'video/emu_pm25.mp4', emu: true },                                    // 34장 네 모델 애니메이션 — 지금 탭의 물질을 화면 가득(소리 없음, 반복)
+    40: { video: 'video/emu_pm25.mp4', emu: true },                                    // (index 40 — 27-1 ~ 27-7장이 끼어 33 → 40, 2026-10-20) 34장 네 모델 애니메이션 — 지금 탭의 물질을 화면 가득(소리 없음, 반복)
   };
   const CUES = Object.keys(FILMS).map(Number).sort((a, b) => a - b);
   let i = 0, filmOn = false, loadedSrc = '', preloadTimer = 0;
@@ -4802,7 +5189,7 @@
     const was = i;
     i = Math.max(0, Math.min(S.length - 1, n));
     S.forEach((s, k) => s.classList.toggle('on', k === i));
-    cur.textContent = i + 1;
+    cur.textContent = PNO(i);
     pv.disabled = (i === 0);
     nx.disabled = (i === S.length - 1);
     /* 예열·비우기는 교차 페이드(.45s)가 끝난 뒤에 한다 — 같은 출처 프레임은 덱과 한 메인스레드를 써서,
@@ -6151,7 +6538,10 @@
     const vzt = sec.querySelector('.vzt'), hl = [...vzt.querySelectorAll('.vzout, .lit')];
     const attach = () => window.conceptStep({ key: 'gc', sec, panel, cv: null, ctx: null, W: 0, H: 0, items, list, intro: null,
       viz: t => { if (gl) gl.frame(t); }, bgm: 'graph/audio/배경음악/01_1편배경음악.mp4',
-      after: s => { vzt.classList.add('stepping'); hl.forEach(e => e.classList.toggle('on', s === 3)); if (s === 3) items.forEach(li => li.classList.remove('on')); },
+      // 2026-10-20 사용자 지시 — 3단계 뒤 다음 한 번 더 = 전체 화면(왼쪽 글 · 상자를 모두 진하게, 발표자가 정리 설명). 그다음 다음 장
+      overview: true,
+      after: s => { vzt.classList.add('stepping'); if (s === 'all') { list.classList.remove('live'); hl.forEach(e => e.classList.add('on')); return; }
+        hl.forEach(e => e.classList.toggle('on', s === 3)); if (s === 3) items.forEach(li => li.classList.remove('on')); },
       maps: [
         [[0, 400], [2, 400], ['end', T_UNI - 1]],   // 대기 · 첫 문장 동안 정이십면체(간선까지 보이게 0.4초 지점)
         [[0, T_UNI], [1, T_UNI + 100], [2, T_UNI + 2700], ['end', T_CMP - 1]],
@@ -6680,7 +7070,9 @@
       if (ph === 2 && t >= T2 + TA) bot(`메시지 패싱 ${Math.min(3, hopNow)}회 — 거듭할수록 관측의 정보가 멀리 있는 격자까지 닿는다`, 1);
     }
     // 단계 넘김 + 내레이션(2026-10-16) — 0단계는 쓰임 소개(GNN_INTRO), 1–3단계는 위 시각화. [문장 번호 | 'end', 그림 시각]
-    window.conceptStep({ key: 'gnn', sec, panel, cv, ctx, W, H, items, list, viz: drawViz, intro: window.GNN_INTRO, bgm: 'graph/audio/배경음악/희망과고무감.mp4', maps: [
+    // 2026-10-20 사용자 지시 — 3단계 뒤 다음 한 번 더 = 전체 화면(왼쪽 세 줄을 모두 진하게, 발표자가 정리 설명). 그다음 다음 장
+    window.conceptStep({ key: 'gnn', sec, panel, cv, ctx, W, H, items, list, viz: drawViz, intro: window.GNN_INTRO, bgm: 'graph/audio/배경음악/희망과고무감.mp4',
+      overview: true, after: s => { if (s === 'all') list.classList.remove('live'); }, maps: [
       [[0, 0], [1, 300], [2, 3300], ['end', T1 - 1]],
       [[0, T1], [1, T1 + 200], [2, T1 + 2100], ['end', T2 - 1]],
       [[0, T2], [1, T2 + 300], [4, T2 + TA], ['end', T_END]]] });
@@ -6816,7 +7208,9 @@
         if (t > T2 + 1600 + NIT * TIT) { ctx.fillStyle = 'rgba(15,22,32,.85)'; ctx.fillRect(0, 568, W, 57); txt('학습이 고르는 것은 물결마다의 가중치뿐 — 같은 가중치를 어느 장에나 쓴다', W / 2, 604, 19, TXT, 'center', 600); }
       }
     }
-    window.conceptStep({ key: 'fft', sec, panel, cv, ctx, W, H, items, list, viz: drawViz, intro: window.FFT_INTRO, bgm: 'graph/audio/배경음악/배경음악01.mp4',   /* 2026-10-18 사용자 지시 — 희망명쾌 → 배경음악01(ppt/graph_html_e2e/audio/배경음악/ 에서 복사) */ maps: [
+    // 2026-10-20 사용자 지시 — 17장과 같이 3단계 뒤 전체 화면 한 단계(왼쪽 세 줄 모두 진하게)
+    window.conceptStep({ key: 'fft', sec, panel, cv, ctx, W, H, items, list, viz: drawViz, intro: window.FFT_INTRO, bgm: 'graph/audio/배경음악/배경음악01.mp4',   /* 2026-10-18 사용자 지시 — 희망명쾌 → 배경음악01(ppt/graph_html_e2e/audio/배경음악/ 에서 복사) */
+      overview: true, after: s => { if (s === 'all') list.classList.remove('live'); }, maps: [
       [[0, 0], [1, 1500], [2, 5000], ['end', T1 - 1]],
       [[0, T1], [1, T1 + 200], [2, T1 + 5100], [3, T1 + 6400], ['end', T2 - 1]],
       [[0, T2], [1, T2 + 100], [2, T2 + 900], [3, T2 + 1600], [4, T2 + 6000], ['end', T_END]]] });
@@ -7174,7 +7568,10 @@
     /* 단계 + 내레이션 + 배경음악(2026-10-16 사용자 지시) — 대기 → 0 다듬기 → 1 30걸음 → 2 여러 번 뽑기 → 3 '확률이 된다' 상자. 원고 '## gn0–3' */
     const vzt = sec.querySelector('.vzt'), hl = [...vzt.querySelectorAll('.vzout, .lit')];
     window.conceptStep({ key: 'gn', sec, panel, cv: null, ctx: null, W: 0, H: 0, items, list, intro: null, viz: draw, bgm: 'graph/audio/배경음악/02_2편배경음악.mp4',
-      after: s => { vzt.classList.add('stepping'); hl.forEach(e => e.classList.toggle('on', s === 3)); if (s === 3) items.forEach(li => li.classList.remove('on')); },
+      // 2026-10-20 사용자 지시 — 3단계 뒤 다음 한 번 더 = 전체 화면(왼쪽 글 · 상자를 모두 진하게, 발표자가 정리 설명). 그다음 다음 장
+      overview: true,
+      after: s => { vzt.classList.add('stepping'); if (s === 'all') { list.classList.remove('live'); hl.forEach(e => e.classList.add('on')); return; }
+        hl.forEach(e => e.classList.toggle('on', s === 3)); if (s === 3) items.forEach(li => li.classList.remove('on')); },
       maps: [
         [[0, 0], [3, T1], ['end', T2 - 1]],
         [[0, T2], ['end', T3 - 1]],
@@ -7534,7 +7931,7 @@
         const li = document.createElement('li'), b = document.createElement('b'), sp = document.createElement('span');
         let t = r && r.textContent.trim();
         if (!t && h) { const c = h.cloneNode(true); c.querySelectorAll('.sub').forEach(x => x.remove()); t = c.textContent.replace(/\s+/g, ' ').trim(); }   // 머리 우측이 빈 장은 제목(부제 뺌)
-        b.textContent = k + 1; sp.textContent = t || '';
+        b.textContent = PNO(k); sp.textContent = t || '';
         li.append(b, sp); ol.appendChild(li);
       }
       ol.classList.toggle('two', ol.children.length > 6);
