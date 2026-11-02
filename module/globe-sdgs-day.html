@@ -1869,16 +1869,21 @@ function polarPoint(th){
 //   persp — 깊이에 따른 크기 배율. 그림만 키우고 이름표 활자는 그대로 둔다.
 //   투사 화면에서 활자까지 같이 줄면 멀어질 때 읽히지 않는다 — 거리감은 그림이 지고 이름표는 정보를 진다.
 //   labA — 이름표 불투명도. 기본은 0 이고 위성 위에 마우스가 닿을 때만 올라온다(?labels=always 면 항상 1).
-function drawSat(key, img, ok, s, X, Y, a, persp, labA){
-  const w = clamp(s.w * R, 54, 190) * (persp || 1), h = ok ? w * (img.height / img.width) : w * 0.6;
+//   rot  — 그림 회전각(라디안). 그림만 돌리고 이름표는 똑바로 둔다. 판정 상자·이름표 위치는 회전한 외접 상자로 잡는다.
+function drawSat(key, img, ok, s, X, Y, a, persp, labA, rot = 0){
+  const w0 = clamp(s.w * R, 54, 190) * (persp || 1), h0 = ok ? w0 * (img.height / img.width) : w0 * 0.6;
+  const cr = Math.abs(Math.cos(rot)), sr = Math.abs(Math.sin(rot));
+  const w = w0 * cr + h0 * sr, h = w0 * sr + h0 * cr;  // 회전한 그림의 외접 상자
   satHit[key] = { X, Y, w, h };                        // 다음 프레임의 마우스 판정 상자
   ctx.save(); const g0 = ctx.globalAlpha; ctx.globalAlpha = g0 * a;
   // 우주 배경이 아니라 밝은 지면·바다 위에 얹히므로 옅은 후광을 깔아 실루엣을 띄운다
-  const gl = ctx.createRadialGradient(X, Y, 0, X, Y, w * 0.72);
+  const gl = ctx.createRadialGradient(X, Y, 0, X, Y, w0 * 0.72);
   gl.addColorStop(0, 'rgba(255,255,255,.55)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(X, Y, w * 0.72, 0, TAU); ctx.fill();
-  if (ok) ctx.drawImage(img, X - w / 2, Y - h / 2, w, h);
-  else { ctx.fillStyle = s.tint; ctx.beginPath(); ctx.roundRect(X - w * 0.3, Y - w * 0.18, w * 0.6, w * 0.36, 5); ctx.fill(); }
+  ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(X, Y, w0 * 0.72, 0, TAU); ctx.fill();
+  ctx.save(); ctx.translate(X, Y); ctx.rotate(rot);
+  if (ok) ctx.drawImage(img, -w0 / 2, -h0 / 2, w0, h0);
+  else { ctx.fillStyle = s.tint; ctx.beginPath(); ctx.roundRect(-w0 * 0.3, -w0 * 0.18, w0 * 0.6, w0 * 0.36, 5); ctx.fill(); }
+  ctx.restore();
   // 이름표
   if (labA < 0.02){ ctx.restore(); return; }
   ctx.globalAlpha = g0 * a * labA;
@@ -1943,7 +1948,11 @@ function drawSatellites(t, dt, wgt){
       ctx.lineTo(tX + ux * reach - px * half, tY + uy * reach - py * half);
       ctx.closePath(); ctx.fill();
     }
-    drawSat('trop', satImg.trop, satOk.trop, SAT.trop, tX, tY, tFade, CAM_D / (CAM_D - rm * q[0]), satLab.trop);
+    // 그림의 바닥(아래쪽)이 늘 지구 중심을 향하게 돌린다 — 공전 한 바퀴에 그림도 한 바퀴 돈다(2026-10-22 사용자 지시).
+    //   그림의 아래 방향 (0,1) 을 rot 만큼 돌리면 (−sin, cos) 이므로, 이것이 중심 방향 (ux, uy) 이 되는 각을 쓴다.
+    const ddx = cx - tX, ddy = cy - tY;
+    const tRot = Math.atan2(-ddx, ddy);
+    drawSat('trop', satImg.trop, satOk.trop, SAT.trop, tX, tY, tFade, CAM_D / (CAM_D - rm * q[0]), satLab.trop, tRot);
   }
 
   // ── GEMS — 지구 고정계. 한반도 상공에 붙박여 지구와 함께 돌고, 뒤로 넘어가면 가려진다.

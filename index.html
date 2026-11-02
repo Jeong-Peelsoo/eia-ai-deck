@@ -8,7 +8,7 @@
        37 전략환경영향평가 · 38 #cmaqjob · 39 #emuslide · 40 #uncslide · 41 #saslide 사후환경영향조사 ·
        42 갑지5 · 43 기술 로드맵 · 44 현업화 연구 제안 · 45 #okslide 성공 요인 · 46 맺음(.thxs).
      ⚠ 장을 끼우거나 빼면 이 줄 · FILMS 키 · 주석의 장 번호를 함께 고친다. 특허 추진 기술 장은 지웠다(외부 공개 발표, 2026-09-25 지시).
-     ⚠ 화면은 1600×900 설계 무대(#stage)를 창 크기에 맞춰 통째로 키운다(F11 전체 화면에서 꽉 차게, 2026-09-25 지시).
+     ⚠ 화면은 1600×900(16:9) 설계 무대(#stage)를 창 안에 맞춰 같은 배율로 확대·축소하고 중앙에 둔다.
        CSS 의 vw·vh 는 설계 단위(--vw 16px · --vh 9px)로 바꿨다 — 창이 커져도 조판은 1600×900 판 그대로다.
      원본: docs/ppt/ppt-제55회한일기술사회발표/정필수-한일기술사회-발표.html — 그 덱의 1 · 4 · 12 · 13 · 14 · 15장 조판이 이 덱 1 · 7 · 20 · 21 · 22 · 24장이 됐다.
 
@@ -86,12 +86,10 @@
   *{box-sizing:border-box; word-break:keep-all; overflow-wrap:break-word}
   /* 화학식 첨자는 유니코드(₂ ₅ ₁₀)로 쓴다 — <sub> 는 부모의 0.8배로 줄어 투사에서 사라진다 */
   sub,sup{font-size:.8em;line-height:0}
-  html,body{margin:0;height:100%;background:var(--paper);overflow:hidden}
-  /* ── 무대 — F11 전체 화면에서 꽉 차게(2026-09-25 지시) ─────────────────────
-     조판은 1600×900 설계 무대 하나로만 한다. 맨 아래 fitStage() 가 창 비율에 맞춰 무대의 짧은 쪽을 늘리고
-     (16:9 보다 넓으면 가로를, 좁으면 세로를) 창 폭에 맞춰 통째로 키운다 — 2560×1440 에서 ×1.6.
-     종전에는 활자·여백이 clamp 상한(1600 기준)에서 멈춰 큰 화면일수록 가장자리가 비었다.
-     ⚠ 영상 오버레이(#film · #bigvid · #film-close)는 무대 밖이다 — 창 전체를 원래 해상도로 덮는다. */
+  html,body{margin:0;height:100%;background:#05080f;overflow:hidden}
+  /* ── 무대 — 화면 비율과 관계없이 16:9 유지 ──────────────────────────────
+     조판은 1600×900 고정이다. fitStage() 가 가로·세로에 같은 배율을 적용하고 중앙에 둔다.
+     16:9 밖의 영역은 어두운 여백이다. 영상 iframe 도 같은 영역에 맞춰 원래 해상도로 그린다. */
   #stage{position:fixed;left:0;top:0;width:1600px;height:900px;transform-origin:0 0;overflow:hidden;background:var(--paper)}
   body{font-family:var(--f);color:var(--ink);-webkit-font-smoothing:antialiased;cursor:default}
 
@@ -1367,7 +1365,8 @@
   /* ── 영상 오버레이 ─────────────────────────────────────────
      예열 중에도 뷰포트 크기를 실제로 갖고 있어야 한다 — display:none 으로 감추면 iframe 폭이 0이 되어
      영상이 캔버스에서 문구 래스터를 만들 때 getImageData(width 0) 로 죽는다. opacity 로만 감춘다. */
-  #film{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:-1;
+  #film{position:fixed;left:var(--stage-left,0px);top:var(--stage-top,0px);
+    width:var(--stage-width,100vw);height:var(--stage-height,100vh);border:0;z-index:-1;
     opacity:0;pointer-events:none;transition:opacity .5s ease;background:#000}
   #film.on{opacity:1;pointer-events:auto;z-index:60}
   #film-close{position:fixed;right:24px;top:20px;z-index:61;display:none;opacity:1;
@@ -1556,7 +1555,7 @@
 
   @media print{
     @page{size:1600px 900px;margin:0}
-    html,body{overflow:visible;height:auto}
+    html,body{overflow:visible;height:auto;background:var(--paper)}
     #stage{position:static;transform:none !important;width:1600px !important;height:auto !important;overflow:visible}
     .slide{position:relative;opacity:1;visibility:visible;height:900px;page-break-after:always}
     .nav,#film,#film-close,#bigvid,.fsfab{display:none}
@@ -4535,14 +4534,17 @@
 
 </div><!-- #stage -->
 <script>
-  /* 무대 맞춤 — 창 비율이 16:9 보다 넓으면 무대 가로를, 좁으면 세로를 늘려 빈틈 없이 채우고 창 폭에 맞춰 키운다.
+  /* 무대 맞춤 — 1600×900 고정 무대를 창 안에 담고 중앙에 둔다.
      --K 는 표지 지구본 iframe 이 제 해상도로 그리도록 거꾸로 줄이는 데 쓴다(CSS .hero .heroglobe). */
   (function fitStage(){
     const st = document.getElementById('stage');
-    const fit = () => { const w = innerWidth, h = innerHeight, a = w / h, wide = a >= 16 / 9;
-      const SW = wide ? 900 * a : 1600, SH = wide ? 900 : 1600 / a, K = w / SW;
-      st.style.width = SW + 'px'; st.style.height = SH + 'px'; st.style.transform = `scale(${K})`;
-      document.documentElement.style.setProperty('--K', K.toFixed(5)); };
+    const fit = () => { const w = innerWidth, h = innerHeight, K = Math.min(w / 1600, h / 900);
+      const left = (w - 1600 * K) / 2, top = (h - 900 * K) / 2;
+      st.style.transform = `translate(${left}px, ${top}px) scale(${K})`;
+      const root = document.documentElement.style;
+      root.setProperty('--K', K.toFixed(5));
+      root.setProperty('--stage-left', left + 'px'); root.setProperty('--stage-top', top + 'px');
+      root.setProperty('--stage-width', 1600 * K + 'px'); root.setProperty('--stage-height', 900 * K + 'px'); };
     fit(); addEventListener('resize', fit);
   })();
 </script>
