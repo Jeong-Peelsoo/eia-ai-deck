@@ -6335,7 +6335,7 @@
       try { renderer = new T.WebGLRenderer({ canvas, antialias: true }); } catch (e) { return; }
       renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); renderer.setClearColor(0x0F1620, 1); renderer.setScissorTest(true);
       const M = buildMesh(), posAttr = new T.BufferAttribute(M.pos, 3);
-      const nEdges = M.levels.reduce((a, l) => a + l.E.length / 2, 0);
+      const nEdges = M.levels.reduce((a, l) => a + l.E.length, 0);   // 방향별로 센다 — l.E 는 간선마다 끝점 둘이라 길이가 곧 양방향 간선 수다(원문 Table 4 와 같은 기준 · 327,660)
       const COL = [0xC8F060, 0xA6CF45, 0x6FBF4A, 0x2FAE55, 0x1D8A55, 0x3D6E66, 0x4A5F6C];
       const OPA = [1, .95, .8, .6, .4, .22, .14];
       // 굵은 단계(0–3)의 간선은 대원 호로 그리되 **길이에 비례해 띄운다** — 굵은 간선은 잘게 쪼갠 간선과 같은 대원 위에 놓여
@@ -6508,7 +6508,7 @@
           B.pts.geometry.setDrawRange(0, M.N);
           if (ph === 1) {   // 겹치기 — 노드를 흐리게 눌러 긴 간선(라임)이 위에 읽히게 한다
             if (painted !== 'mid') { B.paint(null, 0, MID); painted = 'mid'; }
-            lab.innerHTML = `다중 메쉬<small>일곱 단계 간선 ${nEdges.toLocaleString()}개를 한 그래프에</small>`;
+            lab.innerHTML = `다중 메쉬<small>일곱 단계 간선 ${nEdges.toLocaleString()}개(양방향)를 한 그래프에</small>`;
           } else {
             const hop = Math.max(0, Math.min(HOPS, Math.floor((t - T_CMP - 600) / HOP_MS) + 1));
             if (painted !== 'h' + hop) {
